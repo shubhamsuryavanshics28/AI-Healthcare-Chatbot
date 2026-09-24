@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Triage — AI Healthcare Chatbot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F7F6; --surface:#FFFFFF; --surface-alt:#EAEFEE;
+    --ink:#16211F; --ink-soft:#516360; --border:#DDE4E2;
+    --brand:#1F4B47; --brand-soft:#DEEAE7; --brand-ink:#0F2E2B;
+    --low:#3E7A57; --low-bg:#E3F0E8;
+    --moderate:#B4791F; --moderate-bg:#F6E9D3;
+    --high:#B23A32; --high-bg:#F7DEDB;
+    --radius:14px;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    box-sizing:border-box;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12181A; --surface:#182220; --surface-alt:#1F2B28;
+      --ink:#EAF0EE; --ink-soft:#A7B5B1; --border:#2A3532;
+      --brand:#66B39A; --brand-soft:#1E322D; --brand-ink:#CDE9DD;
+      --low:#7FC79A; --low-bg:#1D3327;
+      --moderate:#E0AD5C; --moderate-bg:#3A2F1B;
+      --high:#E68079; --high-bg:#3B2320;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12181A; --surface:#182220; --surface-alt:#1F2B28;
+    --ink:#EAF0EE; --ink-soft:#A7B5B1; --border:#2A3532;
+    --brand:#66B39A; --brand-soft:#1E322D; --brand-ink:#CDE9DD;
+    --low:#7FC79A; --low-bg:#1D3327;
+    --moderate:#E0AD5C; --moderate-bg:#3A2F1B;
+    --high:#E68079; --high-bg:#3B2320;
+  }
+  html,body{height:100%;margin:0}
+  html{scroll-padding-top:env(safe-area-inset-top,0px)}
+  *{box-sizing:border-box}
+  body{
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    background:var(--bg); color:var(--ink);
+    display:flex; height:100%; overflow:hidden;
+  }
+  .brand-font{font-family:'Source Serif 4',Georgia,serif}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:264px; flex-shrink:0; background:var(--surface);
+    border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:20px 16px;
+    padding-top:calc(20px + env(safe-area-inset-top,0px));
+  }
+  .logo{display:flex; align-items:center; gap:10px; margin-bottom:22px}
+  .logo svg{flex-shrink:0}
+  .logo-text{font-family:'Source Serif 4',serif; font-size:20px; font-weight:600; letter-spacing:.2px}
+  .new-chat{
+    display:flex; align-items:center; gap:8px; justify-content:center;
+    background:var(--brand); color:#fff; border:none; border-radius:10px;
+    padding:11px 14px; font-size:14px; font-weight:500; cursor:pointer;
+    font-family:inherit; margin-bottom:22px;
+  }
+  .new-chat:hover{opacity:.92}
+  .sidebar-label{font-size:12px; color:var(--ink-soft); margin:0 0 8px 2px; font-weight:500}
+  .history{list-style:none; margin:0; padding:0; flex:1; overflow-y:auto; min-height:0}
+  .history li{
+    padding:9px 10px; border-radius:8px; font-size:13.5px; color:var(--ink-soft);
+    cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .history li:hover{background:var(--surface-alt); color:var(--ink)}
+  .history li.active{background:var(--brand-soft); color:var(--brand-ink); font-weight:500}
+  .disclaimer-box{
+    margin-top:16px; padding:12px 13px; border-radius:10px;
+    background:var(--surface-alt); border:1px solid var(--border);
+    font-size:11.5px; line-height:1.5; color:var(--ink-soft);
+  }
+  .disclaimer-box strong{color:var(--ink); display:block; margin-bottom:3px; font-size:12px}
+
+  /* ---------- Main ---------- */
+  .main{flex:1; display:flex; flex-direction:column; min-width:0}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 24px; padding-top:calc(16px + env(safe-area-inset-top,0px));
+    border-bottom:1px solid var(--border); background:var(--surface);
+  }
+  .topbar h1{font-size:15.5px; margin:0; font-weight:600}
+  .topbar p{font-size:12.5px; color:var(--ink-soft); margin:2px 0 0}
+  .status-pill{
+    display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);
+    background:var(--surface-alt); padding:5px 10px; border-radius:99px;
+  }
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--low)}
+
+  .emergency-banner{
+    display:none; align-items:center; gap:10px;
+    background:var(--high-bg); color:var(--high); border-bottom:1px solid var(--border);
+    padding:11px 24px; font-size:13.5px; font-weight:500;
+  }
+  .emergency-banner.show{display:flex}
+  .emergency-banner a{color:var(--high); text-decoration:underline; font-weight:600}
+
+  .thread{flex:1; overflow-y:auto; padding:22px 24px}
+  .thread-inner{max-width:680px; margin:0 auto; display:flex; flex-direction:column; gap:16px}
+
+  .msg{display:flex; gap:10px; max-width:88%}
+  .msg.bot{align-self:flex-start}
+  .msg.user{align-self:flex-end; flex-direction:row-reverse}
+  .avatar{
+    width:30px; height:30px; border-radius:8px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+    background:var(--brand-soft); color:var(--brand-ink);
+  }
+  .msg.user .avatar{background:var(--surface-alt); color:var(--ink)}
+  .bubble{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:11px 14px; font-size:14.5px; line-height:1.55;
+  }
+  .msg.user .bubble{background:var(--brand); color:#fff; border-color:var(--brand)}
+  .msg.bot .bubble{border-top-left-radius:4px}
+  .msg.user .bubble{border-top-right-radius:4px}
+
+  .triage-card{
+    margin-top:8px; border-radius:12px; padding:13px 15px; border:1px solid var(--border);
+  }
+  .triage-card.low{background:var(--low-bg)}
+  .triage-card.moderate{background:var(--moderate-bg)}
+  .triage-card.high{background:var(--high-bg)}
+  .triage-tag{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:4px 10px; border-radius:99px; margin-bottom:8px;
+  }
+  .triage-card.low .triage-tag{background:var(--low); color:#fff}
+  .triage-card.moderate .triage-tag{background:var(--moderate); color:#fff}
+  .triage-card.high .triage-tag{background:var(--high); color:#fff}
+  .triage-card p{margin:0 0 6px; font-size:13.5px; line-height:1.5; color:var(--ink)}
+  .triage-card p:last-child{margin-bottom:0}
+
+  .typing{display:flex; gap:4px; padding:4px 2px}
+  .typing span{width:6px;height:6px;border-radius:50%;background:var(--ink-soft);animation:blink 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}
+  .typing span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+  .chips{display:flex; gap:8px; flex-wrap:wrap; padding:0 24px 12px; max-width:680px; margin:0 auto; width:100%}
+  .chip{
+    font-family:inherit; font-size:12.5px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink-soft); padding:7px 12px; border-radius:99px; cursor:pointer;
+  }
+  .chip:hover{border-color:var(--brand); color:var(--brand-ink)}
+
+  .composer{
+    border-top:1px solid var(--border); background:var(--surface);
+    padding:14px 24px calc(14px + env(safe-area-inset-bottom,0px));
+  }
+  .composer-inner{
+    max-width:680px; margin:0 auto; display:flex; align-items:flex-end; gap:10px;
+    background:var(--bg); border:1px solid var(--border); border-radius:16px; padding:8px 8px 8px 16px;
+  }
+  .composer-inner textarea{
+    flex:1; border:none; background:transparent; resize:none; font-family:inherit;
+    font-size:14.5px; color:var(--ink); outline:none; max-height:120px; padding:7px 0; line-height:1.4;
+  }
+  .composer-inner textarea::placeholder{color:var(--ink-soft)}
+  .send-btn{
+    width:36px; height:36px; border-radius:10px; border:none; background:var(--brand); color:#fff;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+  }
+  .send-btn:disabled{opacity:.4; cursor:default}
+  .composer-note{max-width:680px; margin:8px auto 0; font-size:11px; color:var(--ink-soft); text-align:center}
+
+  @media (max-width:720px){
+    .sidebar{position:fixed; z-index:10; height:100%; transform:translateX(-100%); transition:transform .2s}
+    .sidebar.open{transform:translateX(0)}
+    .menu-btn{display:flex !important}
+  }
+  .menu-btn{display:none; align-items:center; justify-content:center; width:32px;height:32px; border:1px solid var(--border); background:var(--surface); border-radius:8px; cursor:pointer; margin-right:10px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 12h4l2-7 4 14 2-7h6" stroke="#1F4B47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--brand)"/></svg>
+    <span class="logo-text">Triage</span>
+  </div>
+  <button class="new-chat" onclick="resetChat()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    New conversation
+  </button>
+  <p class="sidebar-label">Recent</p>
+  <ul class="history">
+    <li class="active">Sore throat, 2 days</li>
+    <li>Recurring headache</li>
+    <li>Mild fever overnight</li>
+    <li>Twisted ankle swelling</li>
+  </ul>
+  <div class="disclaimer-box">
+    <strong>Not a medical provider</strong>
+    Triage gives general guidance only, not a diagnosis or treatment. It does not prescribe medication. In an emergency, call your local emergency number.
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex; align-items:center">
+      <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div>
+        <h1>Symptom check-in</h1>
+        <p>Describe what you're feeling, in your own words</p>
+      </div>
+    </div>
+    <div class="status-pill"><span class="status-dot"></span>Session active</div>
+  </div>
+
+  <div class="emergency-banner" id="emergencyBanner">
+    ⚠ This sounds urgent. Please call your local emergency number now — <a href="#" onclick="return false">do not wait for this chat</a>.
+  </div>
+
+  <div class="thread" id="thread">
+    <div class="thread-inner" id="threadInner">
+      <div class="msg bot">
+        <div class="avatar">✚</div>
+        <div>
+          <div class="bubble">Hi, I'm Triage. Tell me what symptoms you're noticing and I'll ask a couple of follow-up questions, then point you toward the right level of care. I can't diagnose or prescribe anything.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip" onclick="sendQuick('I have a headache and feel a bit dizzy')">Headache &amp; dizziness</button>
+    <button class="chip" onclick="sendQuick('I have a sore throat and mild cough')">Sore throat &amp; cough</button>
+    <button class="chip" onclick="sendQuick('I have chest pain and shortness of breath')">Chest pain</button>
+    <button class="chip" onclick="sendQuick('I have a mild fever since this morning')">Mild fever</button>
+  </div>
+
+  <div class="composer">
+    <div class="composer-inner">
+      <textarea id="input" rows="1" placeholder="Describe your symptoms..." onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="handleSend()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 8 6 8-16-8z" fill="white"/></svg>
+      </button>
+    </div>
+    <p class="composer-note">Triage does not store your conversation and cannot replace professional medical care.</p>
+  </div>
+</div>
+
+<script>
+const thread = document.getElementById('threadInner');
+const input = document.getElementById('input');
+const emergencyBanner = document.getElementById('emergencyBanner');
+let stage = 0; // 0 = awaiting symptom, 1 = awaiting follow-up answer
+let lastSymptom = '';
+
+const EMERGENCY_WORDS = ['chest pain','can\'t breathe','cant breathe','difficulty breathing','severe bleeding','shortness of breath','unconscious','stroke','numb face','slurred speech'];
+const HIGH_WORDS = ['blood','fainted','severe pain','high fever','confusion'];
+const MODERATE_WORDS = ['fever','vomit','cough','migraine','rash','swelling'];
+
+function handleKey(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); handleSend(); }
+}
+function sendQuick(text){ input.value = text; handleSend(); }
+
+function addMessage(text, who){
+  const row = document.createElement('div');
+  row.className = 'msg ' + who;
+  row.innerHTML = `<div class="avatar">${who==='bot'?'✚':'you'}</div><div><div class="bubble"></div></div>`;
+  row.querySelector('.bubble').textContent = text;
+  thread.appendChild(row);
+  scrollDown();
+  return row;
+}
+
+function addTyping(){
+  const row = document.createElement('div');
+  row.className = 'msg bot'; row.id = 'typingRow';
+  row.innerHTML = `<div class="avatar">✚</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  thread.appendChild(row);
+  scrollDown();
+}
+function removeTyping(){ const t = document.getElementById('typingRow'); if(t) t.remove(); }
+function scrollDown(){ const t = document.getElementById('thread'); t.scrollTop = t.scrollHeight; }
+
+function classify(text){
+  const t = text.toLowerCase();
+  if(EMERGENCY_WORDS.some(w=>t.includes(w))) return 'high';
+  if(HIGH_WORDS.some(w=>t.includes(w))) return 'high';
+  if(MODERATE_WORDS.some(w=>t.includes(w))) return 'moderate';
+  return 'low';
+}
+
+function triageCopy(level){
+  if(level==='high') return {
+    tag:'High urgency', cls:'high',
+    lines:["What you're describing can indicate something serious.","Please contact a doctor or emergency services promptly rather than waiting."]
+  };
+  if(level==='moderate') return {
+    tag:'Moderate urgency', cls:'moderate',
+    lines:["This is worth attention soon.","Consider booking a same-week appointment, and rest and hydrate meanwhile."]
+  };
+  return {
+    tag:'Low urgency', cls:'low',
+    lines:["This sounds manageable with routine self-care.","Monitor how it develops, and see a doctor if it lasts more than a few days."]
+  };
+}
+
+function handleSend(){
+  const text = input.value.trim();
+  if(!text) return;
+  addMessage(text,'user');
+  input.value='';
+
+  if(stage===0){
+    lastSymptom = text;
+    const level = classify(text);
+    if(level==='high' && EMERGENCY_WORDS.some(w=>text.toLowerCase().includes(w))){
+      emergencyBanner.classList.add('show');
+      addTyping();
+      setTimeout(()=>{ removeTyping(); showTriage('high'); }, 700);
+      stage = 0;
+      return;
+    }
+    addTyping();
+    setTimeout(()=>{
+      removeTyping();
+      addMessage("Got it. How long has this been going on, and would you say it's mild, moderate, or severe?", 'bot');
+      stage = 1;
+    }, 700);
+  } else {
+    const combined = lastSymptom + ' ' + text;
+    const level = classify(combined);
+    addTyping();
+    setTimeout(()=>{ removeTyping(); showTriage(level); }, 800);
+    stage = 0;
+  }
+}
+
+function showTriage(level){
+  const c = triageCopy(level);
+  const row = document.createElement('div');
+  row.className = 'msg bot';
+  row.innerHTML = `<div class="avatar">✚</div><div>
+      <div class="bubble">Thanks for the detail. Here's where that lands:</div>
+      <div class="triage-card ${c.cls}">
+        <span class="triage-tag">${c.tag}</span>
+        <p>${c.lines[0]}</p>
+        <p>${c.lines[1]}</p>
+        <p style="color:var(--ink-soft); font-size:12px">This is general guidance, not a diagnosis — always confirm with a licensed professional.</p>
+      </div>
+    </div>`;
+  thread.appendChild(row);
+  scrollDown();
+}
+
+function resetChat(){
+  stage = 0; lastSymptom='';
+  emergencyBanner.classList.remove('show');
+  thread.innerHTML = `<div class="msg bot"><div class="avatar">✚</div><div><div class="bubble">Hi, I'm Triage. Tell me what symptoms you're noticing and I'll ask a couple of follow-up questions, then point you toward the right level of care. I can't diagnose or prescribe anything.</div></div></div>`;
+}
+</script>
+</body>
+</html>
