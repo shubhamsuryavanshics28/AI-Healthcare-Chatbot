@@ -1,0 +1,19 @@
+DOCUMENT TITLE: National Guidelines for Clinical Management of Dengue Fever
+SOURCE: Ministry of Health & Family Welfare (MoHFW), Government of India
+SOURCE URL: https://nvbdcp.gov.in/index4.php?lang=1&level=0&linkid=431&lid=3689
+TOPIC: Vector-Borne Diseases & Dengue
+JURISDICTION: India
+LAST REVIEWED: 2025-09-12
+
+--- 1. Clinical Stages and Phases ---
+Dengue is a viral infection transmitted by the bite of infected Aedes aegypti mosquitoes. It has three clinical phases: 1. Febrile Phase (Days 1 to 5): Sudden high-grade fever (up to 40°C), retro-orbital pain (pain behind the eyes), intense myalgia (breakbone fever), severe headache, arthralgia, and macular rash. 2. Critical Phase (Around Days 3 to 7, usually when fever defervesces): Increased capillary permeability leading to plasma leakage, hemoconcentration (rising hematocrit), and rapid drop in platelet count. 3. Recovery Phase: Gradual reabsorption of extravasated fluid, stabilization of vital signs, and rising platelet counts.
+
+--- 2. Critical Management Rules and Drug Warnings ---
+CRITICAL WARNING ON MEDICATIONS: Use PARACETAMOL only for fever and analgesia (maximum 500-650 mg per dose, at least 4 to 6 hours apart; max 3 grams per day in adults). NEVER USE ASPIRIN, IBUPROFEN, DICLOFENAC, MEFENAMIC ACID, OR OTHER NSAIDs in suspected dengue patients. NSAIDs aggravate platelet dysfunction and increase the risk of massive, fatal gastrointestinal bleeding. Steroids and prophylactic antibiotics are NOT indicated in uncomplicated dengue.
+
+--- 3. Fluid Management and Hydration ---
+Oral fluid intake is the cornerstone of early management in the febrile phase. Patients should consume abundant oral rehydration solution (ORS), fresh coconut water, fruit juices, and soups. Do not give plain water alone in large amounts as it can cause electrolyte imbalances (hyponatremia). Monitor urine output: Patient must pass clear or pale yellow urine at least 4 to 6 times in 24 hours.
+
+--- 4. Warning Signs of Severe Dengue (Immediate Hospitalization) ---
+Patients, families, and clinicians must vigilantly monitor for warning signs, which usually appear during fever subsiding: - Severe and persistent abdominal pain or tenderness. - Persistent vomiting (more than 3 episodes in 24 hours) or inability to retain fluids. - Bleeding from gums, nose (epistaxis), petechial skin hemorrhages, or blood in stools/vomit. - Extreme lethargy, restlessness, or sudden postural dizziness. - Rapid or labored breathing. Presence of ANY warning sign mandates immediate hospitalization and continuous vital monitoring.
+

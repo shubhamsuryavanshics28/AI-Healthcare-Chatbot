@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Dashboard - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .stat-val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin: 0.25rem 0;
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .action-btn-card {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border: 1px solid #bae6fd;
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      text-decoration: none;
+      color: var(--primary-dark);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: all 0.15s ease;
+    }
+    .action-btn-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <!-- Emergency Notice Bar -->
+  <div style="background: var(--emergency-bg); border-bottom: 1px solid var(--emergency-border); padding: 0.65rem 1.5rem; text-align: center; font-size: 0.85rem; color: #991b1b; font-weight: 600;">
+    🚨 Emergency Services Alert: For acute emergency evaluation, call <strong>112</strong> immediately. The chatbot cannot substitute for emergency hospital admission.
+  </div>
+
+  <main class="container">
+    <!-- Welcome Header -->
+    <div style="margin-bottom: 1.5rem;">
+      <h2 id="welcomeGreeting" style="font-size: 1.75rem; font-weight: 800; color: var(--text-main);">
+        Welcome to your Patient Portal
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        View your health metrics, start RAG-backed AI consultations, and monitor triage history.
+      </p>
+    </div>
+
+    <!-- Quick Action Launchers -->
+    <div class="quick-actions">
+      <a href="/chat" class="action-btn-card">
+        <div style="font-size: 1.5rem;">💬</div>
+        <div style="font-weight: 700; font-size: 1.05rem;">Start AI Consultation</div>
+        <div style="font-size: 0.825rem; color: var(--text-muted);">Consult with ArogyaAI using verified medical RAG</div>
+      </a>
+
+      <a href="/triage" class="action-btn-card" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-color: #bbf7d0; color: #14532d;">
+        <div style="font-size: 1.5rem;">🩺</div>
+        <div style="font-weight: 700; font-size: 1.05rem;">Assess Symptoms (Triage)</div>
+        <div style="font-size: 0.825rem; color: #166534;">Evaluate symptom urgency level (1 to 4)</div>
+      </a>
+
+      <a href="/medicine" class="action-btn-card" style="background: linear-gradient(135deg, #fdf4ff, #fae8ff); border-color: #f5d0fe; color: #701a75;">
+        <div style="font-size: 1.5rem;">💊</div>
+        <div style="font-weight: 700; font-size: 1.05rem;">Search Medicines</div>
+        <div style="font-size: 0.825rem; color: #86198f;">Lookup verified drug facts, warnings, & uses</div>
+      </a>
+
+      <a href="/profile" class="action-btn-card" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color: #fde68a; color: #78350f;">
+        <div style="font-size: 1.5rem;">👤</div>
+        <div style="font-weight: 700; font-size: 1.05rem;">Patient Profile</div>
+        <div style="font-size: 0.825rem; color: #92400e;">Update demographics, blood group, & contacts</div>
+      </a>
+    </div>
+
+    <!-- Metric Tiles -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Active Conditions</span>
+        <span class="stat-val" id="condCount">0</span>
+        <a href="/history" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Manage history &rarr;</a>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Documented Allergies</span>
+        <span class="stat-val" id="allCount">0</span>
+        <a href="/medications-page" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">View allergies &rarr;</a>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Current Medications</span>
+        <span class="stat-val" id="medCount">0</span>
+        <a href="/medications-page" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">Review medications &rarr;</a>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-label">Triage Assessments</span>
+        <span class="stat-val" id="assessCount">0</span>
+        <a href="/triage" style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">View assessments &rarr;</a>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+      <!-- Recent Symptom Assessments -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🩺 Recent Triage Assessments</h3>
+          <a href="/triage" class="btn btn-outline btn-sm">New Assessment</a>
+        </div>
+        <div id="recentAssessmentsList">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+            Loading assessments...
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Consultations -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">💬 Recent Consultations</h3>
+          <a href="/chat" class="btn btn-primary btn-sm">Start Consultation</a>
+        </div>
+        <div id="recentChatsList">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+            Loading consultations...
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-disclaimer">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage (Project ID: 26P_3CSE294).
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

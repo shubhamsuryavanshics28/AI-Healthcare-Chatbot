@@ -1,0 +1,16 @@
+DOCUMENT TITLE: US FDA Clinical Guidance on Safe Use of OTC Analgesics and Antipyretics
+SOURCE: U.S. Food and Drug Administration (FDA)
+SOURCE URL: https://www.fda.gov/drugs/safe-daily-use-otc-pain-relievers
+TOPIC: Pharmacological Safety & Analgesics
+JURISDICTION: United States / International Reference
+LAST REVIEWED: 2026-01-10
+
+--- 1. Acetaminophen (Paracetamol) Safe Dosing Limits ---
+Acetaminophen is one of the most widely used active pharmaceutical ingredients. The maximum daily limit for adults is 4,000 milligrams (4 grams) within any 24-hour period. For patients with chronic liver disease, regular alcohol consumers (3 or more drinks daily), or underweight adults, the recommended daily maximum is 2,000 to 3,000 mg. Overdose can cause acute liver failure requiring liver transplantation or causing death. Antidote: N-acetylcysteine (NAC) is most effective when administered within 8 hours of acute overdose.
+
+--- 2. Hidden Combination Medications Warning ---
+Over 600 prescription and over-the-counter medications contain acetaminophen/paracetamol as an active ingredient, including cough syrups, sinus decongestants, allergy medications, and sleep aids. Accidental overdose frequently occurs when a patient takes paracetamol tablets concurrently with a multi-symptom cold/flu preparation without realizing both contain paracetamol. Always read drug labels carefully and never take two products containing acetaminophen at the same time.
+
+--- 3. NSAIDs (Ibuprofen, Naproxen) Cardiovascular and Gastrointestinal Risks ---
+Non-steroidal anti-inflammatory drugs (NSAIDs) can cause severe gastrointestinal ulceration, bleeding, or perforation, which can occur without warning symptoms. Risks are substantially higher in elderly patients, those with previous ulcer disease, concurrent systemic steroid or anticoagulant use. NSAIDs also increase the risk of heart attack or stroke, even within the first weeks of use. Do not use NSAIDs immediately before or after coronary artery bypass graft (CABG) surgery.
+

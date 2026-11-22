@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicine Information & Reference - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <main class="container">
+    <div style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--primary-dark);">
+        Verified Medicine Information Directory
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        Search official pharmacological reference facts, indications, side effects, and serious drug warnings (FDA, MedlinePlus, CDSCO).
+      </p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; gap: 0.75rem;">
+        <input 
+          type="search" 
+          id="medSearchInput" 
+          class="form-control" 
+          placeholder="Search by generic name, brand name (e.g. Dolo, Brufen, Ventolin), or indication..."
+          style="font-size: 1rem; padding: 0.75rem 1rem;"
+        >
+        <button id="btnSearch" class="btn btn-primary" style="padding: 0 1.5rem;">
+          Search
+        </button>
+      </div>
+
+      <!-- Quick Search Chips -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.85rem; align-items: center;">
+        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Popular Inquiries:</span>
+        <button class="suggestion-chip" onclick="quickSearch('Paracetamol')">Paracetamol / Dolo</button>
+        <button class="suggestion-chip" onclick="quickSearch('Ibuprofen')">Ibuprofen / Combiflam</button>
+        <button class="suggestion-chip" onclick="quickSearch('Metformin')">Metformin (Diabetes)</button>
+        <button class="suggestion-chip" onclick="quickSearch('Amlodipine')">Amlodipine (Blood Pressure)</button>
+        <button class="suggestion-chip" onclick="quickSearch('Oral Rehydration')">ORS (Dehydration)</button>
+      </div>
+    </div>
+
+    <!-- Results Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main);" id="searchStatus">
+        Verified Medications
+      </h3>
+      <span id="resultsCountBadge" class="badge badge-routine">Loading...</span>
+    </div>
+
+    <!-- Medicine Cards Grid -->
+    <div class="med-grid" id="medicinesContainer">
+      <div style="text-align: center; padding: 3rem; color: var(--text-muted); grid-column: 1 / -1;">
+        Loading medicine repository...
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Detailed Medicine Modal -->
+  <div class="modal-overlay" id="medicineDetailModal">
+    <div class="modal-content" style="max-width: 720px;">
+      <button class="modal-close" onclick="closeMedicineDetailModal()">&times;</button>
+      
+      <div id="medModalBody">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-disclaimer">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage (Project ID: 26P_3CSE294).
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/medicine.js"></script>
+</body>
+</html>

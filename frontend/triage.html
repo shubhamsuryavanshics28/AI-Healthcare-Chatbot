@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Symptom Assessment & Triage - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    .severity-slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .severity-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .severity-badge-indicator {
+      align-self: center;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 0.35rem 1rem;
+      border-radius: var(--radius-full);
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <!-- Emergency Quick Notice -->
+  <div style="background: var(--emergency-bg); border-bottom: 1px solid var(--emergency-border); padding: 0.5rem 1.5rem; text-align: center; font-size: 0.825rem; color: #991b1b; font-weight: 600;">
+    🚨 Critical Safety Engine: If you suspect a heart attack, stroke, or severe breathing crisis, call <strong>112</strong> immediately.
+  </div>
+
+  <main class="container">
+    <div style="margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--primary-dark);">
+        Symptom Assessment & Clinical Triage Protocol
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        Structured clinical evaluation using independent deterministic safety rules and urgency tier classification.
+      </p>
+    </div>
+
+    <!-- Triage Form & Result Display -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+      
+      <!-- Questionnaire Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🩺 Symptom Evaluation Form</h3>
+        </div>
+
+        <form id="triageForm">
+          <div class="form-group">
+            <label class="form-label" for="primarySymptom">Primary Health Concern / Symptom *</label>
+            <input type="text" id="primarySymptom" class="form-control" placeholder="e.g. Crushing chest tightness, Sudden high fever, Lingering sore throat" required minlength="2">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="duration">Duration of Symptoms *</label>
+              <input type="text" id="duration" class="form-control" placeholder="e.g. 2 hours, 3 days, 1 week" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="bodyLocation">Body Location</label>
+              <input type="text" id="bodyLocation" class="form-control" placeholder="e.g. Chest, Left arm, Forehead, Throat">
+            </div>
+          </div>
+
+          <!-- Severity Slider -->
+          <div class="form-group">
+            <label class="form-label">Symptom Severity (Scale 1 to 10) *</label>
+            <div class="severity-slider-container">
+              <div id="severityDisplay" class="severity-badge-indicator badge-selfcare">
+                Severity: 3/10 (Mild Discomfort)
+              </div>
+              <input type="range" id="severitySlider" min="1" max="10" value="3" class="form-control" style="cursor: pointer;">
+              <div class="severity-labels">
+                <span>1: Minimal</span>
+                <span>3: Mild</span>
+                <span>5: Moderate</span>
+                <span>7: Severe</span>
+                <span>9-10: Critical Emergency</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="frequency">Symptom Pattern</label>
+              <select id="frequency" class="form-control">
+                <option value="constant">Constant / Persistent</option>
+                <option value="intermittent">Intermittent / Comes and goes</option>
+                <option value="worsening rapidly">Worsening rapidly</option>
+                <option value="improving">Gradually improving</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="relevantHistory">Relevant Medical Conditions</label>
+              <input type="text" id="relevantHistory" class="form-control" placeholder="e.g. Hypertension, Diabetic, Asthmatic">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="associatedSymptoms">Associated Symptoms</label>
+            <textarea id="associatedSymptoms" class="form-control" placeholder="e.g. Cold sweat, dizziness, nausea, dry cough, shortness of breath..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btnRunTriage" style="width: 100%;">
+            Run Triage Assessment &rarr;
+          </button>
+        </form>
+      </div>
+
+      <!-- Result Card Container -->
+      <div class="card" id="triageResultCardContainer">
+        <div class="card-header">
+          <h3 class="card-title">⚖️ Triage Guidance Result</h3>
+        </div>
+        <div id="triageResultPlaceholder" style="text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🩺</div>
+          Fill out the symptom evaluation questionnaire on the left and submit to receive structured clinical urgency guidance.
+        </div>
+        <div id="triageActiveResult" style="display: none;"></div>
+      </div>
+
+    </div>
+
+    <!-- Historical Assessments Timeline -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">📜 Past Symptom Assessments</h3>
+        <span id="historyCountBadge" class="badge badge-routine">0 Records</span>
+      </div>
+      <div id="triageHistoryContainer">
+        <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+          Loading assessment history...
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-disclaimer">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage (Project ID: 26P_3CSE294).
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/triage.js"></script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArogyaAI - AI Healthcare Chatbot & Patient Triage</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    .hero {
+      padding: 4rem 1.5rem;
+      background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.2;
+      max-width: 820px;
+      margin: 0 auto 1.25rem;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto 2rem;
+    }
+    .hero-cta {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin: 3rem 0;
+    }
+    .feature-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      transition: all 0.2s ease;
+    }
+    .feature-box:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .how-it-works-step {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-start;
+    }
+    .step-number {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <!-- Emergency Quick Notice Banner -->
+  <div style="background: #fef2f2; border-bottom: 1px solid #fecaca; padding: 0.65rem 1.5rem; text-align: center; font-size: 0.85rem; color: #991b1b; font-weight: 600;">
+    🚨 Medical Emergency Notice: If you have severe chest pain, inability to breathe, or loss of consciousness, dial <strong>112</strong> immediately.
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span>🏥 University Major Project Demonstration</span> • <span>B.Tech AI & ML</span>
+    </div>
+    <h1>Intelligent Healthcare Assistant & Preliminary Triage System</h1>
+    <p>
+      An evidence-grounded clinical chatbot powered by Retrieval-Augmented Generation (RAG) and independent emergency safety engines. Assisting patients with symptom analysis, urgency triage, and medicine verification.
+    </p>
+    <div class="hero-cta">
+      <a href="/register" class="btn btn-primary btn-lg">Get Started Free</a>
+      <a href="/login" class="btn btn-outline btn-lg">Patient Login</a>
+    </div>
+  </section>
+
+  <!-- Main Content Container -->
+  <main class="container">
+    
+    <!-- System Features Overview -->
+    <div style="text-align: center; margin-top: 2rem;">
+      <h2 style="font-size: 2rem; font-weight: 700;">Core Clinical Capabilities</h2>
+      <p style="color: var(--text-muted); max-width: 600px; margin: 0.5rem auto 0;">
+        Engineered with strict clinical ethics, multi-tier safety rules, and trusted knowledge sources.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-box">
+        <div class="feature-icon">💬</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Evidence-Grounded AI Chat</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Conversational agent utilizing AsyncOpenAI with clinical guardrails: strictly non-prescriptive, non-diagnostic, and grounded in official medical literature.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <div class="feature-icon">📚</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Medical RAG Pipeline</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          ChromaDB vector database coupled with PyMuPDF document extraction. Retrieves verified guidance from WHO, CDC, MedlinePlus, and India MoHFW.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <div class="feature-icon">🚨</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Deterministic Emergency Safety</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Independent rule engine that screens for critical warning signs (cardiac, respiratory, FAST stroke) and instantly escalates to Emergency 112 before LLM execution.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <div class="feature-icon">⚖️</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">4-Tier Triage Protocol</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Categorizes patient concerns into Emergency, Urgent Care, Routine Consultation, or Supportive Self-Care with transparent clinical rationales.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <div class="feature-icon">💊</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Verified Medicine Directory</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Searchable pharmaceutical reference providing generic names, indications, serious warnings, and side effects from FDA and MedlinePlus.
+        </p>
+      </div>
+
+      <div class="feature-box">
+        <div class="feature-icon">🔒</div>
+        <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem;">Patient Data Isolation</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Argon2 password hashing, JWT authorization, and strict per-user database scoping for patient profile, allergies, and medication history.
+        </p>
+      </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="card" style="margin-top: 2rem;">
+      <div class="card-header">
+        <h2 class="card-title">🔬 How the Triage and RAG Pipeline Works</h2>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 1rem;">
+        <div>
+          <div class="how-it-works-step">
+            <div class="step-number">1</div>
+            <div>
+              <h4 style="font-weight: 700;">Patient Consultation & Symptom Input</h4>
+              <p style="color: var(--text-muted); font-size: 0.875rem;">
+                The patient shares symptoms through the interactive chat or structured assessment wizard, specifying duration, severity, and location.
+              </p>
+            </div>
+          </div>
+
+          <div class="how-it-works-step">
+            <div class="step-number">2</div>
+            <div>
+              <h4 style="font-weight: 700;">Deterministic Emergency Screen</h4>
+              <p style="color: var(--text-muted); font-size: 0.875rem;">
+                The safety engine intercepts text using clinical heuristics. Red flags trigger immediate emergency 112 guidance, bypassing LLM delays.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="how-it-works-step">
+            <div class="step-number">3</div>
+            <div>
+              <h4 style="font-weight: 700;">Semantic RAG Document Retrieval</h4>
+              <p style="color: var(--text-muted); font-size: 0.875rem;">
+                ChromaDB executes hybrid semantic search on official medical PDFs extracted via PyMuPDF, filtering results with strict relevance thresholds.
+              </p>
+            </div>
+          </div>
+
+          <div class="how-it-works-step">
+            <div class="step-number">4</div>
+            <div>
+              <h4 style="font-weight: 700;">Grounded Synthesis & Triage Categorization</h4>
+              <p style="color: var(--text-muted); font-size: 0.875rem;">
+                The assistant synthesizes answers strictly grounded on cited sources, providing structured urgency level and next-step clinical recommendations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div style="font-weight: 700; color: var(--text-main);">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage
+      </div>
+      <div>Project ID: <strong>26P_3CSE294</strong> | Team Size: 4 | Academic Major Project Demonstration</div>
+      <p class="footer-disclaimer">
+        <strong>Important Safety Disclaimer:</strong> This web application is an academic AI research prototype designed for informational and preliminary triage demonstration. It does NOT provide clinical diagnoses, personalized medical prescriptions, or therapeutic treatment orders. In any genuine medical crisis or acute symptom event, immediately contact emergency services (Dial 112 in India) or consult a licensed medical doctor.
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+</body>
+</html>

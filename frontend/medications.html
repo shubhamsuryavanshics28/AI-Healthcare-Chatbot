@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allergies & Current Medications - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <style>
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <main class="container">
+    <div style="margin-bottom: 1rem;">
+      <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--primary-dark);">
+        Allergies & Patient Medications
+      </h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        Keep your documented drug/food allergies and current medication regimen updated.
+      </p>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>Clinical Safety Notice:</strong> This module is strictly for recording your existing, doctor-prescribed medications to provide clinical context during AI triage. ArogyaAI never recommends prescription medications, self-prescribes, or adjusts dosages.
+    </div>
+
+    <div id="recordsAlert" class="alert" style="display: none;"></div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" id="tabBtnAllergies" onclick="switchTab('allergies')">
+        ⚠️ Documented Allergies (<span id="allergyCount">0</span>)
+      </button>
+      <button class="tab-btn" id="tabBtnMeds" onclick="switchTab('medications')">
+        💊 Current Medications (<span id="medsCount">0</span>)
+      </button>
+    </div>
+
+    <!-- Allergies Section -->
+    <div id="sectionAllergies">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">⚠️ Patient Allergies</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddAllergyModal()">
+            ➕ Add Allergy
+          </button>
+        </div>
+        <div id="allergiesListContainer">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            Loading allergies...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medications Section -->
+    <div id="sectionMeds" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">💊 Recorded Medications</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddMedModal()">
+            ➕ Add Medication
+          </button>
+        </div>
+        <div id="medicationsListContainer">
+          <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            Loading medications...
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add/Edit Allergy Modal -->
+  <div class="modal-overlay" id="allergyModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeAllergyModal()">&times;</button>
+      <h3 id="allergyModalTitle" style="font-size: 1.25rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem;">
+        Add Allergy Record
+      </h3>
+      <form id="allergyForm">
+        <input type="hidden" id="allergyEditId">
+        <div class="form-group">
+          <label class="form-label" for="allergen">Allergen Name *</label>
+          <input type="text" id="allergen" class="form-control" placeholder="e.g. Penicillin, Peanuts, Sulfa drugs" required minlength="2">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="allergyReaction">Typical Reaction *</label>
+            <input type="text" id="allergyReaction" class="form-control" placeholder="e.g. Hives, Facial swelling, Shortness of breath" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="allergySeverity">Severity *</label>
+            <select id="allergySeverity" class="form-control" required>
+              <option value="mild">Mild (Localized rash, itching)</option>
+              <option value="moderate">Moderate (Widespread hives, swelling)</option>
+              <option value="severe">Severe (Anaphylaxis, respiratory distress)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="allergyNotes">Clinical Notes</label>
+          <textarea id="allergyNotes" class="form-control" placeholder="e.g. Diagnosed in childhood; carries EpiPen..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-outline" onclick="closeAllergyModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveAllergy">Save Allergy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Medication Modal -->
+  <div class="modal-overlay" id="medModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeMedModal()">&times;</button>
+      <h3 id="medModalTitle" style="font-size: 1.25rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem;">
+        Record Patient Medication
+      </h3>
+      <form id="medForm">
+        <input type="hidden" id="medEditId">
+        <div class="form-group">
+          <label class="form-label" for="medName">Medicine / Drug Name *</label>
+          <input type="text" id="medName" class="form-control" placeholder="e.g. Metformin, Amlodipine, Paracetamol" required minlength="2">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="medDosage">Reported Dosage *</label>
+            <input type="text" id="medDosage" class="form-control" placeholder="e.g. 500 mg, 5 mg, 1 puff" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="medFrequency">Frequency *</label>
+            <input type="text" id="medFrequency" class="form-control" placeholder="e.g. Once daily with dinner, As needed" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="medStart">Start Date</label>
+            <input type="date" id="medStart" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="medIsCurrent">Currently Taking?</label>
+            <select id="medIsCurrent" class="form-control">
+              <option value="true">Yes (Active medication)</option>
+              <option value="false">No (Discontinued / completed course)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="medNotes">Doctor's Prescribing Instructions / Reason</label>
+          <textarea id="medNotes" class="form-control" placeholder="e.g. Prescribed by Dr. Sharma for blood pressure control..."></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+          <button type="button" class="btn btn-outline" onclick="closeMedModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveMed">Save Medication</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-disclaimer">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage (Project ID: 26P_3CSE294).
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/allergies_meds.js"></script>
+</body>
+</html>

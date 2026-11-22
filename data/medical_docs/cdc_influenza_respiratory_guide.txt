@@ -1,0 +1,19 @@
+DOCUMENT TITLE: CDC Clinical Overview of Influenza and Viral Upper Respiratory Infections
+SOURCE: Centers for Disease Control and Prevention (CDC)
+SOURCE URL: https://www.cdc.gov/flu/professionals/diagnosis/index.htm
+TOPIC: Respiratory Infections & Influenza
+JURISDICTION: Global / Public Health
+LAST REVIEWED: 2025-10-01
+
+--- 1. Clinical Features and Distinction from Common Cold ---
+Influenza (flu) is characterized by the sudden onset of systemic and respiratory symptoms. Typical symptoms include abrupt high fever (often 38°C to 40°C), body aches, chills, significant fatigue, dry cough, sore throat, and headache. In contrast, the common cold typically has a gradual onset, lower or absent fever, and prominent nasal congestion, sneezing, and runny nose. Uncomplicated influenza typically resolves within 3 to 7 days, though malaise and dry cough may persist for over two weeks.
+
+--- 2. Supportive Home Care and Symptom Relief ---
+For uncomplicated viral upper respiratory infections, management focuses on supportive care: Hydration: Generous fluid intake (water, warm broths, oral rehydration solutions) to prevent dehydration and loosen mucosal secretions. Rest: Strict physical rest to support immune recovery and prevent transmission. Antipyretics: Paracetamol (acetaminophen) or ibuprofen may be used for symptom comfort and fever relief in adults. Aspirin Warning: Never administer aspirin or aspirin-containing products to children or teenagers recovering from viral infections due to the risk of Reye's syndrome.
+
+--- 3. High-Risk Populations and Complications ---
+Certain populations face higher risks of severe flu-related complications (such as secondary bacterial pneumonia, myocarditis, or sepsis): Adults aged 65 and older, children under 5 years (especially under 2 years), pregnant women, and individuals with chronic medical conditions (asthma, chronic lung disease, diabetes, cardiovascular disease, or immunosuppression). These patients should be evaluated early by a physician.
+
+--- 4. Emergency Warning Signs Requiring Immediate Care ---
+Adults must seek immediate emergency medical care if they experience: - Difficulty breathing, shortness of breath, or gasping. - Persistent pain or pressure in the chest or abdomen. - Persistent dizziness, confusion, or inability to arouse. - Seizures. - Inability to urinate (severe dehydration). - Fever or cough that improves but then returns or worsens significantly (sign of secondary bacterial pneumonia).
+

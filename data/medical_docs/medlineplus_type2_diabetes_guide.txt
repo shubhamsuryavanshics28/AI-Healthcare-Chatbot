@@ -1,0 +1,16 @@
+DOCUMENT TITLE: MedlinePlus Patient Clinical Guide: Type 2 Diabetes Self-Care and Monitoring
+SOURCE: MedlinePlus - National Library of Medicine (NIH)
+SOURCE URL: https://medlineplus.gov/diabetestype2.html
+TOPIC: Endocrine & Metabolic Health
+JURISDICTION: Global / Health Education
+LAST REVIEWED: 2026-01-22
+
+--- 1. Understanding Type 2 Diabetes ---
+Type 2 diabetes is a chronic metabolic condition where the body either resists the effects of insulin or does not produce enough insulin to maintain normal glucose levels. Target blood glucose levels for most non-pregnant adults with diabetes: - Fasting / pre-prandial blood sugar: 80 to 130 mg/dL (4.4 to 7.2 mmol/L). - Post-prandial (1 to 2 hours after start of meal): Under 180 mg/dL (10.0 mmol/L). - Hemoglobin A1c (HbA1c): Generally under 7.0% for most adults, individualized per clinician.
+
+--- 2. Recognizing Hypoglycemia (Low Blood Sugar) ---
+Hypoglycemia is defined as blood glucose below 70 mg/dL (3.9 mmol/L). Symptoms include shakiness, sweating, palpitations, pallor, anxiety, dizziness, hunger, blurred vision, and irritability. Rule of 15 Treatment: 1. Consume 15 grams of fast-acting simple carbohydrates (such as 4 glucose tablets, half cup / 120 ml of fruit juice, or 3-4 teaspoons of sugar in water). 2. Wait 15 minutes and re-check blood glucose. 3. If still below 70 mg/dL, repeat with another 15 grams of carbohydrates. If patient is unconscious or unable to swallow, do NOT force food into mouth; administer emergency glucagon and call emergency services 112 immediately.
+
+--- 3. Long-Term Complications and Preventive Screenings ---
+Poorly controlled diabetes can cause microvascular and macrovascular damage over time: - Diabetic retinopathy (risk of blindness): Annual dilated eye examination required. - Diabetic nephropathy (kidney disease): Annual urine albumin-to-creatinine ratio (uACR) and serum creatinine (eGFR). - Diabetic neuropathy and foot ulcers: Daily self-inspection of feet for cuts, blisters, or calluses, and annual professional sensory foot exam. - Cardiovascular disease: Strict blood pressure and lipid monitoring.
+

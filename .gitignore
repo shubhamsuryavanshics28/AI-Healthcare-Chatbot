@@ -1,0 +1,23 @@
+# Python virtual environment
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Environment files with secrets
+.env
+
+# Database & Vector Store data
+*.db
+*.sqlite
+*.sqlite3
+data/chromadb/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

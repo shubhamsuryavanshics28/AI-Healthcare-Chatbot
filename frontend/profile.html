@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Profile - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <main class="container">
+    <div style="max-width: 760px; margin: 1rem auto;">
+      
+      <div style="margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.75rem; font-weight: 800; color: var(--primary-dark);">
+          Patient Profile & Emergency Contacts
+        </h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          Maintain your personal clinical baseline to assist AI triage and clinical recommendations.
+        </p>
+      </div>
+
+      <div id="profileAlert" class="alert" style="display: none;"></div>
+
+      <div class="card">
+        <form id="profileForm">
+          
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+            Demographics & Vitals Baseline
+          </h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="dob">Date of Birth</label>
+              <input type="date" id="dob" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="gender">Gender</label>
+              <select id="gender" class="form-control">
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="bloodGroup">Blood Group</label>
+              <select id="bloodGroup" class="form-control">
+                <option value="">Select blood group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="heightCm">Height (cm)</label>
+              <input type="number" id="heightCm" class="form-control" placeholder="e.g. 172" min="30" max="250" step="0.5">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="weightKg">Weight (kg)</label>
+              <input type="number" id="weightKg" class="form-control" placeholder="e.g. 68" min="2" max="300" step="0.5">
+            </div>
+          </div>
+
+          <h3 style="font-size: 1.1rem; font-weight: 700; margin: 1.5rem 0 1rem; color: var(--text-main); border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+            Designated Emergency Contact
+          </h3>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="emergName">Contact Full Name</label>
+              <input type="text" id="emergName" class="form-control" placeholder="e.g. Sarah Doe">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="emergPhone">Contact Phone Number</label>
+              <input type="tel" id="emergPhone" class="form-control" placeholder="e.g. +91 9876543210">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="emergRelation">Relationship</label>
+              <input type="text" id="emergRelation" class="form-control" placeholder="e.g. Spouse / Parent / Sibling">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="generalNotes">Clinical Baseline & Lifestyle Notes</label>
+            <textarea id="generalNotes" class="form-control" placeholder="e.g. Non-smoker, vegetarian diet, mild seasonal pollen sensitivity..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btnSaveProfile">
+            Save Profile Updates
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <p class="footer-disclaimer">
+        ArogyaAI — AI-Based Healthcare Chatbot for Patient Assistance and Triage (Project ID: 26P_3CSE294).
+      </p>
+    </div>
+  </footer>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Healthcare Consultation - ArogyaAI</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="nav-logo-icon">➕</div>
+      <div class="brand-text">
+        <h1>ArogyaAI <span class="brand-badge">26P_3CSE294</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links" id="navLinks"></ul>
+    <div class="nav-auth" id="navAuth"></div>
+  </header>
+
+  <!-- Emergency Quick Help Notice -->
+  <div style="background: var(--emergency-bg); border-bottom: 1px solid var(--emergency-border); padding: 0.5rem 1.5rem; text-align: center; font-size: 0.825rem; color: #991b1b; font-weight: 600;">
+    🚨 Emergency Safety Notice: In case of acute chest pain, shortness of breath, or sudden weakness, call <strong>112</strong> immediately.
+  </div>
+
+  <main class="container" style="padding-top: 1rem; padding-bottom: 0.5rem;">
+    <div class="chat-wrapper">
+      
+      <!-- Conversation History Sidebar -->
+      <aside class="chat-sidebar">
+        <div class="chat-sidebar-header">
+          <button id="btnNewChat" class="btn btn-primary btn-sm" style="width: 100%;">
+            ➕ New Conversation
+          </button>
+        </div>
+        <ul class="chat-history-list" id="conversationList">
+          <li style="text-align: center; padding: 1.5rem; color: var(--text-light); font-size: 0.85rem;">
+            Loading conversations...
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Main Chat Area -->
+      <section class="chat-main">
+        
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div>
+            <h3 id="currentChatTitle" style="font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+              Healthcare Consultation
+            </h3>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
+              <span id="ragStatusBadge" class="badge badge-selfcare" title="RAG Knowledge Vector Database">
+                ● RAG Active (Official Sources)
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-light);">• Non-Diagnostic AI</span>
+            </div>
+          </div>
+          <div>
+            <button id="btnClearChat" class="btn btn-outline btn-sm">
+              Clear Window
+            </button>
+          </div>
+        </div>
+
+        <!-- Messages Container -->
+        <div class="chat-messages-container" id="chatMessages">
+          
+          <!-- Welcome / Disclaimer Bubble -->
+          <div class="message-row assistant">
+            <div class="message-avatar">AI</div>
+            <div class="message-content">
+              <div class="message-bubble">
+                Hello! I am <strong>ArogyaAI</strong>, your healthcare assistance and preliminary triage assistant.
+                <br><br>
+                I can help you understand symptoms, provide evidence-grounded health information from official medical references (WHO, CDC, FDA, MoHFW), and determine preliminary urgency.
+                <br><br>
+                <em>How can I assist you with your health today? Please describe any symptoms you are experiencing.</em>
+              </div>
+            </div>
+          </div>
+
+          <!-- Typing Indicator -->
+          <div class="typing-indicator" id="typingIndicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 0.25rem;">Consulting clinical knowledge base...</span>
+          </div>
+
+        </div>
+
+        <!-- Suggested Questions Bar -->
+        <div class="chat-suggestions" id="chatSuggestions">
+          <button class="suggestion-chip" onclick="handleSuggestion(this)">
+            What medications must be avoided in dengue fever?
+          </button>
+          <button class="suggestion-chip" onclick="handleSuggestion(this)">
+            What is normal resting blood pressure and dietary management?
+          </button>
+          <button class="suggestion-chip" onclick="handleSuggestion(this)">
+            What is the maximum safe daily dose of Paracetamol?
+          </button>
+          <button class="suggestion-chip" onclick="handleSuggestion(this)">
+            How do I recognize symptoms of low blood sugar (hypoglycemia)?
+          </button>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="chat-input-area">
+          <textarea
+            id="chatInput"
+            placeholder="Describe your health question or symptoms... (Press Enter to send, Shift+Enter for new line)"
+            rows="1"
+          ></textarea>
+          <button id="btnSendMessage" class="btn btn-primary" style="height: 48px; padding: 0 1.25rem;">
+            Send &rarr;
+          </button>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/auth.js"></script>
+  <script src="/static/js/chat.js"></script>
+</body>
+</html>

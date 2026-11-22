@@ -1,0 +1,19 @@
+DOCUMENT TITLE: WHO Guideline for the Pharmacological Treatment of Hypertension in Adults
+SOURCE: World Health Organization (WHO)
+SOURCE URL: https://www.who.int/publications/i/item/9789240033986
+TOPIC: Cardiovascular Health & Hypertension
+JURISDICTION: Global
+LAST REVIEWED: 2025-08-15
+
+--- 1. Definition and Diagnostic Thresholds ---
+Hypertension is defined when blood pressure is consistently at or above 140/90 mmHg on two separate clinic visits. Normal resting blood pressure is defined as systolic < 120 mmHg and diastolic < 80 mmHg. Pre-hypertension or elevated blood pressure is classified as systolic 120-139 mmHg or diastolic 80-89 mmHg. All adults aged 18 and older should have their blood pressure checked at least every two years if normal, and annually if elevated.
+
+--- 2. Lifestyle and Dietary Interventions ---
+First-line management for elevated blood pressure and essential hypertension begins with non-pharmacological interventions. Dietary sodium reduction: Limit salt intake to less than 5 grams per day (approximately one level teaspoon). Dietary pattern: Adopt a diet rich in fruits, vegetables, whole grains, nuts, and low-fat dairy products (DASH dietary pattern). Physical activity: Engage in at least 150 minutes of moderate-intensity aerobic exercise per week (such as brisk walking) or 75 minutes of vigorous exercise. Weight management: Aim for a body mass index (BMI) within normal ranges (18.5 to 24.9 kg/m2). Alcohol and tobacco: Complete cessation of tobacco smoking and substantial restriction of alcohol intake.
+
+--- 3. Pharmacological Treatment Classes ---
+When pharmacological treatment is initiated, WHO recommends initiating treatment with any of three classes of antihypertensive medications: 1. Thiazide or thiazide-like diuretics. 2. Angiotensin-converting enzyme inhibitors (ACEIs) or Angiotensin receptor blockers (ARBs). 3. Long-acting dihydropyridine calcium channel blockers (such as Amlodipine). Combination therapy: For patients with baseline blood pressure >= 20/10 mmHg above target, initiation with combination therapy from two different classes is recommended.
+
+--- 4. Warning Signs and Hypertensive Emergency ---
+A hypertensive crisis is characterized by severe blood pressure elevation (systolic >= 180 mmHg and/or diastolic >= 120 mmHg). If accompanied by signs of acute target organ damage (severe chest pain, shortness of breath, severe headache, neurological deficits, visual disturbance, or confusion), this constitutes a HYPERTENSIVE EMERGENCY requiring immediate emergency department admission and intravenous therapy. Dial emergency services 112 immediately.
+
