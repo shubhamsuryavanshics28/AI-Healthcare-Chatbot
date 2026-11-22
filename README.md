@@ -6,6 +6,8 @@
 **Team Size:** 4  
 **Academic Demonstration Version:** 1.0.0 (Production-Ready University Major Project)
 
+**Live Application:** https://arogya-ai-wdj7.onrender.com/
+
 ---
 
 ## 1. Executive Summary & Project Purpose
@@ -18,7 +20,7 @@ Crucially, ArogyaAI incorporates a **deterministic, independent emergency safety
 
 ## 2. System Architecture
 
-```
+```text
 +---------------------------------------------------------------------------------------------------+
 |                                        PRESENTATION TIER                                          |
 |                HTML5 • Modern Responsive CSS3 • Vanilla JavaScript (ES6+ Fetch API)               |
@@ -43,7 +45,7 @@ Crucially, ArogyaAI incorporates a **deterministic, independent emergency safety
 |  |  - AsyncOpenAI (gpt-4o-mini / responses)           |      +----------------------------------+ |
 |  |  - Strict Non-diagnostic & Non-prescriptive Guards |      |    4-Tier Clinical Triage Engine | |
 |  |  - Dynamic Token-limited Context History           |      |  1. EMERGENCY (Immediate 112)    | |
-|  |  - Graceful Grounded Offline Fallback Engine       |      |  2. URGENT (Within 4-12 Hours)   | |
+|  |  - Graceful Grounded Offline Fallback Engine      |      |  2. URGENT (Within 4-12 Hours)   | |
 |  +---------------------------+------------------------+      |  3. ROUTINE (Within 2-3 Days)    | |
 |                              | Grounding & Evidence          |  4. SELF-CARE (Home Monitoring)  | |
 |                              v                               +----------------------------------+ |
@@ -74,7 +76,7 @@ Crucially, ArogyaAI incorporates a **deterministic, independent emergency safety
 
 ## 3. Database Architecture (Entity-Relationship Diagram)
 
-```
+```text
 +------------------+         1:1         +-------------------+
 |      users       |-------------------->| patient_profiles  |
 +------------------+                     +-------------------+
@@ -114,6 +116,7 @@ Crucially, ArogyaAI incorporates a **deterministic, independent emergency safety
 | updated_at       |                     | safety_flags_json |
 +--------+---------+                     | tokens_used       |
          |                               +-------------------+
+         |
          | 1:N
          v
 +----------------------+         1:1     +----------------------+
@@ -168,8 +171,8 @@ Crucially, ArogyaAI incorporates a **deterministic, independent emergency safety
 
 ## 5. Directory Structure
 
-```
-c:\AI Healthcare Chatbot/
+```text
+AI Healthcare Chatbot/
 ├── .env.example              # Environment variables template
 ├── .env                      # Local configuration
 ├── .gitignore                # Git ignore configuration
@@ -230,11 +233,11 @@ c:\AI Healthcare Chatbot/
 │   ├── profile.html          # Patient demographics & emergency contacts
 │   ├── history.html          # Medical conditions CRUD
 │   ├── medications.html      # Allergies and current medications CRUD
-│   ├── triage.html           # Structured symptom triage wizard & history
+│   ├── triage.html           # Symptom assessment wizard & history
 │   ├── medicine.html         # Verified medicine search & monograph modal
 │   ├── css/
 │   │   ├── styles.css        # Core healthcare theme & typography
-│   │   └── components.css    # Message bubbles, badges, triage cards, modals
+│   │   └── components.css   # Message bubbles, badges, triage cards, modals
 │   └── js/
 │       ├── api.js            # Centralized API client & JWT interceptor
 │       ├── auth.js           # Authentication state & navbar controller
@@ -244,7 +247,7 @@ c:\AI Healthcare Chatbot/
 │       ├── medical.js        # Medical history CRUD controller
 │       ├── allergies_meds.js # Allergies & Medications CRUD controller
 │       ├── triage.js         # Symptom assessment & urgency card controller
-│       └── medicine.js       # Medicine search & monograph controller
+│       ├── medicine.js       # Medicine search & monograph controller
 ├── scripts/
 │   ├── create_medical_docs.py # Generates reference medical PDFs with PyMuPDF
 │   └── run_acceptance_test.py # 28-step end-to-end acceptance test script
@@ -266,16 +269,18 @@ c:\AI Healthcare Chatbot/
 ## 6. Installation & Execution Guide
 
 ### Prerequisites
+
 - Python 3.10, 3.11, 3.12, or 3.13
 - Git
 
-### Step 1: Clone the Repository
+### Step 1: Open the Project Directory
+
 ```bash
-git clone https://github.com/your-username/ai-healthcare-chatbot.git
-cd "ai-healthcare-chatbot"
+cd "AI Healthcare Chatbot"
 ```
 
 ### Step 2: Create and Activate Virtual Environment
+
 ```bash
 # Windows
 python -m venv .venv
@@ -287,12 +292,15 @@ source .venv/bin/activate
 ```
 
 ### Step 3: Install Required Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Step 4: Configure Environment Variables
+
 Copy `.env.example` to `.env`:
+
 ```bash
 # Windows PowerShell
 Copy-Item .env.example .env
@@ -300,7 +308,9 @@ Copy-Item .env.example .env
 # Linux / macOS
 cp .env.example .env
 ```
+
 Open `.env` and configure your settings:
+
 ```ini
 OPENAI_API_KEY=your_openai_api_key_here  # Optional: system functions in grounded mode if blank
 OPENAI_MODEL=gpt-4o-mini
@@ -312,39 +322,51 @@ AMBULANCE_INDIA=102
 ```
 
 ### Step 5: Launch the Application
+
 Run the launcher script:
+
 ```bash
 python run.py
 ```
+
 Or run directly via Uvicorn:
+
 ```bash
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open your web browser at:
-- **Landing Page:** [http://localhost:8000/](http://localhost:8000/)
-- **Interactive API Documentation (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Alternative ReDoc API Docs:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+- **Landing Page:** http://localhost:8000/
+- **Interactive API Documentation (Swagger):** http://localhost:8000/docs
+- **Alternative ReDoc API Docs:** http://localhost:8000/redoc
 
 ---
 
 ## 7. Testing Suite Execution
 
 ### Running All 46 Automated Unit & Integration Tests
+
 ```bash
 pytest -v
 ```
+
 Output summary:
+
 ```text
 ============================= 46 passed in 4.65s ==============================
 ```
 
 ### Running the 28-Step End-to-End Acceptance Test
+
 Execute the comprehensive university demonstration acceptance checklist:
+
 ```bash
 python scripts/run_acceptance_test.py
 ```
+
 Output:
+
 ```text
 ================================================================================
 🏥 RUNNING COMPLETE END-TO-END ACCEPTANCE TEST
@@ -408,4 +430,4 @@ The following clinical scenarios were executed against the system:
 - **Project ID:** 26P_3CSE294
 - **Project Title:** AI-Based Healthcare Chatbot for Patient Assistance and Triage
 - **Team Size:** 4
-- **Demonstration:** B.Tech Computer Science and Engineering (AI & ML) Major Project
+- **Demonstration:** B.Tech Computer Science and Engineering (AI & ML)
