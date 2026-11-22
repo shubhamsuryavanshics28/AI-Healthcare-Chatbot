@@ -10,6 +10,19 @@
 
 ---
 
+## 🌐 Live Deployment
+
+| Resource | Link |
+|---|---|
+| **🚀 Live Website** | [https://arogya-ai-wdj7.onrender.com](https://arogya-ai-wdj7.onrender.com) |
+| **📋 Health Check** | [https://arogya-ai-wdj7.onrender.com/health](https://arogya-ai-wdj7.onrender.com/health) |
+| **📖 API Docs (Swagger)** | [https://arogya-ai-wdj7.onrender.com/docs](https://arogya-ai-wdj7.onrender.com/docs) |
+| **📂 GitHub Repository** | [https://github.com/shubhamsuryavanshics28/AI-healthcare-chatbot](https://github.com/shubhamsuryavanshics28/AI-healthcare-chatbot) |
+
+> **Note:** Hosted on Render.com free tier. The service may take ~30 seconds to respond after a period of inactivity (cold start). Please wait a moment and refresh if needed.
+
+---
+
 ## 1. Executive Summary & Project Purpose
 
 **ArogyaAI** is an intelligent, evidence-grounded healthcare assistant and structured preliminary triage platform developed as a major academic project. Designed for clinical reliability and patient safety, the platform combines conversational artificial intelligence with a Retrieval-Augmented Generation (RAG) pipeline built upon official medical literature (WHO, CDC, FDA, MedlinePlus, and the Ministry of Health and Family Welfare, Government of India).
@@ -273,10 +286,11 @@ AI Healthcare Chatbot/
 - Python 3.10, 3.11, 3.12, or 3.13
 - Git
 
-### Step 1: Open the Project Directory
+### Step 1: Clone the Repository
 
 ```bash
-cd "AI Healthcare Chatbot"
+git clone https://github.com/shubhamsuryavanshics28/AI-healthcare-chatbot.git
+cd "AI-healthcare-chatbot"
 ```
 
 ### Step 2: Create and Activate Virtual Environment
@@ -425,7 +439,46 @@ The following clinical scenarios were executed against the system:
 
 ---
 
-## 10. Academic Project Declaration
+## 10. Deployment Guide (Render.com)
+
+### Prerequisites
+- GitHub account with this repository pushed
+- Render.com account (free tier)
+
+### Steps
+1. Go to [https://render.com](https://render.com) → **New +** → **Web Service**
+2. Connect your GitHub repository: `shubhamsuryavanshics28/AI-healthcare-chatbot`
+3. Configure the service:
+
+| Setting | Value |
+|---|---|
+| **Name** | `arogya-ai` |
+| **Language** | Python 3 |
+| **Branch** | `main` |
+| **Region** | Singapore (Southeast Asia) |
+| **Build Command** | `pip install -r requirements.txt && python scripts/create_medical_docs.py` |
+| **Start Command** | `uvicorn backend.main:app --host 0.0.0.0 --port $PORT` |
+| **Instance Type** | Free |
+
+4. Add these **Environment Variables**:
+
+| Key | Value |
+|---|---|
+| `SECRET_KEY` | Any random 32+ character string |
+| `OPENAI_API_KEY` | Your OpenAI API key (optional — RAG fallback works without it) |
+| `DEBUG` | `False` |
+| `DATABASE_URL` | `sqlite:///./healthcare.db` |
+
+5. Click **Create Web Service** — build takes 3–5 minutes.
+
+### Important Notes for Free Tier
+- **Cold start:** Free instances sleep after 15 minutes of inactivity. The first request after sleep takes ~30 seconds.
+- **Ephemeral storage:** SQLite data and ChromaDB resets on each restart. For persistent storage, add a free Render PostgreSQL database and update `DATABASE_URL`.
+- **ChromaDB auto-reinitializes** on startup via the lifespan handler — no manual action needed.
+
+---
+
+## 11. Academic Project Declaration
 
 - **Project ID:** 26P_3CSE294
 - **Project Title:** AI-Based Healthcare Chatbot for Patient Assistance and Triage

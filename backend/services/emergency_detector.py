@@ -64,6 +64,11 @@ EMERGENCY_RULESETS = [
             r"\bsevere\s+chest\s+pain\b",
             r"\bchest\s+tightness\s+(with|radiating)\b",
             r"\bpain\s+radiating\s+to\s+(left\s+arm|jaw|neck|back)\b",
+            r"\b(ripping|tearing)\s+(chest|back)\s+pain\b",
+            r"\b(ripping|tearing)\s+pain\s+(in|between|across)\b",
+            r"\baortic\s+dissection\b",
+            r"\b(bp|blood\s+pressure).*?(1[89]\d|2\d\d)\/(1[1-9]\d|2\d\d)\b",
+            r"\bhypertensive\s+crisis\b",
             r"\bheart\s+attack\b"
         ],
         "associated_factors": [
@@ -75,36 +80,45 @@ EMERGENCY_RULESETS = [
             r"\bnausea\b"
         ],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Symptoms strongly suggest a possible acute cardiac event (such as a heart attack). "
+            "CRITICAL MEDICAL ALERT: Symptoms strongly suggest a possible acute cardiac event or hypertensive emergency. "
             "DO NOT drive yourself to the hospital. Immediately dial 112 (National Emergency) or 102/108 for an ambulance. "
             "Sit in a comfortable, seated resting position while waiting for emergency responders."
         )
     },
     {
-        "category": "Severe Acute Respiratory Distress",
+        "category": "Severe Acute Respiratory Distress & Airway Compromise",
         "primary_triggers": [
             r"\bcan('?t|not)\s+breathe\b",
             r"\bgasping\s+for\s+(air|breath)\b",
             r"\bsevere\s+(difficulty\s+breathing|breathlessness|shortness\s+of\s+breath)\b",
             r"\bblue\s+(lips|fingers|fingertips|skin|face)\b",
+            r"\b(lips|skin|face|fingers)\s+(turning|are)\s+blue\b",
+            r"\bturning\s+(purple|blue)\b",
             r"\bcyanosis\b",
             r"\bchoking\b",
+            r"\bclutching\s+(at\s+)?(throat|neck)\b",
             r"\bstridor\b",
-            r"\bunable\s+to\s+speak\s+in\s+sentences\b"
+            r"\bunable\s+to\s+speak\s+in\s+sentences\b",
+            r"\bunable\s+to\s+(breathe|cough|speak|cry)\b",
+            r"\bforeign\s+body\s+airway\b",
+            r"\bpneumothorax\b"
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Severe breathing difficulty or oxygen depletion detected. "
+            "CRITICAL MEDICAL ALERT: Severe breathing difficulty, choking, or airway obstruction detected. "
             "This is a life-threatening emergency. Call 112 / 102 immediately. "
-            "Sit upright to keep airways open and do not exert yourself."
+            "Sit upright to keep airways open, or perform anti-choking first aid if airway is blocked."
         )
     },
     {
         "category": "Suspected Acute Stroke (FAST Protocol)",
         "primary_triggers": [
             r"\bfacial\s+droop(ing)?\b",
+            r"\bface\s+(is\s+)?(drooping|numb|sagging)\b",
             r"\bface\s+(drooping|numb|sagging)\s+on\s+one\s+side\b",
+            r"\bside\s+of\s+(the\s+)?face\s+(is\s+)?(drooping|numb|sagging)\b",
             r"\barm\s+(weakness|numbness|drifting)\s+on\s+one\s+side\b",
+            r"\barm\s+(is\s+)?weak\s+and\s+cannot\s+lift\b",
             r"\bone\s+sided\s+(weakness|paralysis|numbness)\b",
             r"\bslurred\s+speech\b",
             r"\bunable\s+to\s+(speak|talk|form\s+words)\b",
@@ -114,7 +128,7 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Potential stroke symptoms detected (FAST Protocol). "
+            "CRITICAL MEDICAL ALERT: Potential stroke symptoms detected (FAST Protocol: Face, Arms, Speech, Time). "
             "Time lost is brain lost. Seek emergency hospital intervention IMMEDIATELY. "
             "Dial 112 / 102. Note the exact time when symptoms first started."
         )
@@ -124,8 +138,10 @@ EMERGENCY_RULESETS = [
         "primary_triggers": [
             r"\banaphylaxis\b",
             r"\bsevere\s+allergic\s+reaction\b",
-            r"\bthroat\s+(closing|tightness|swelling)\b",
-            r"\bswelling\s+of\s+(tongue|throat|lips)\s+(with|and)\s+(trouble|difficulty)\s+breathing\b"
+            r"\bthroat\s+(is\s+)?(closing|closing\s+up|tightness|swelling)\b",
+            r"\btongue\s+(is\s+)?swollen\b",
+            r"\bswollen\s+(tongue|throat|lips)\b",
+            r"\bswelling\s+of\s+(tongue|throat|lips)\b"
         ],
         "associated_factors": [
             r"\bdizziness\b",
@@ -146,33 +162,77 @@ EMERGENCY_RULESETS = [
             r"\bsevere\s+uncontrolled\s+bleeding\b",
             r"\bgushing\s+blood\b",
             r"\bmassive\s+blood\s+loss\b",
-            r"\bcoughing\s+up\s+large\s+amounts\s+of\s+blood\b",
+            r"\bcoughing\s+up\s+(large\s+amounts\s+of\s+)?blood\b",
+            r"\bhemoptysis\b",
             r"\bvomiting\s+(large\s+amounts\s+of\s+)?blood\b",
-            r"\bhematemesis\b"
+            r"\bcoffee\s+ground(s)?\b",
+            r"\b(black|tarry)\s+(stool(s)?|bowel\s+movement(s)?)\b",
+            r"\bhematemesis\b",
+            r"\bmelena\b",
+            r"\bbone\s+(sticking\s+through|protruding|poking\s+out)\b",
+            r"\bcompound\s+fracture\b",
+            r"\bopen\s+fracture\b"
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Acute massive hemorrhage detected. "
-            "Apply continuous firm, direct pressure with a clean cloth. "
+            "CRITICAL MEDICAL ALERT: Acute massive hemorrhage, internal GI bleeding, or open fracture detected. "
+            "Apply continuous firm, direct pressure with a clean cloth for external bleeding. Do not move broken bones. "
             "Call 112 / 102 immediately. Keep the patient warm and lying flat."
         )
     },
     {
-        "category": "Neurological Crisis / Loss of Consciousness",
+        "category": "Neurological Crisis / Severe Altered State",
         "primary_triggers": [
             r"\bunconscious\b",
             r"\bunresponsive\b",
             r"\bpassed\s+out\s+and\s+(won'?t|cannot)\s+wake\s+up\b",
-            r"\bactive\s+seizure\s+lasting\s+more\s+than\s+5\s+minutes\b",
+            r"\bactive\s+seizure\b",
+            r"\bconvulsing\b",
+            r"\bfoaming\s+at\s+(the\s+)?mouth\b",
             r"\bstatus\s+epilepticus\b",
-            r"\bsudden\s+worst\s+headache\s+of\s+(my|their)\s+life\b",
-            r"\bthunderclap\s+headache\b"
+            r"\bsudden\s+worst\s+(headache|pain)\s+of\s+(my|their)\s+(entire\s+)?life\b",
+            r"\bworst\s+pain\s+of\s+my\s+entire\s+life\b",
+            r"\bthunderclap\s+headache\b",
+            r"\bneck\s+stiffness\s+(with|and)\s+.*fever\b",
+            r"\bunable\s+to\s+touch\s+chin\s+to\s+chest\b",
+            r"\bmeningitis\b"
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Altered consciousness or neurological emergency detected. "
+            "CRITICAL MEDICAL ALERT: Acute neurological crisis (suspected seizure, intracranial hemorrhage, or meningitis). "
             "Place patient in recovery position if breathing. Do not put anything in the mouth. "
-            "Dial 112 / 102 for immediate emergency dispatch."
+            "Dial 112 / 102 for immediate emergency medical dispatch."
+        )
+    },
+    {
+        "category": "Acute Metabolic Crisis & Poisoning",
+        "primary_triggers": [
+            r"\b(fruity|acetone)\s+(breath|odor)\b",
+            r"\bdiabetic\s+ketoacidosis\b",
+            r"\bdka\b",
+            r"\b(blood\s+sugar|glucose)\s+(is\s+|reading\s+is\s+)?(3[5-9]|[12]\d)\s*(mg\/dl)?\b",
+            r"\bhow\s+many\s+.*pills\s+(cause\s+death|to\s+die|are\s+fatal|lethal)\b",
+            r"\bdistended\s+hard\s+belly.*vomiting\s+green\s+bile\b",
+            r"\bbowel\s+obstruction\b"
+        ],
+        "associated_factors": [],
+        "guidance": (
+            "CRITICAL MEDICAL ALERT: Acute metabolic emergency, severe toxicity, or acute surgical abdomen detected. "
+            "Seek emergency room medical attention immediately. Dial 112 / 102 without delay."
+        )
+    },
+    {
+        "category": "Crisis & Mental Health Support Alert",
+        "primary_triggers": [
+            r"\b(want\s+to\s+end\s+my\s+life|kill\s+myself|commit\s+suicide|self[\s-]harm)\b",
+            r"\bfeel\s+hopeless\s+and\s+.*want\s+to\s+end\s+my\s+life\b"
+        ],
+        "associated_factors": [],
+        "guidance": (
+            "CRISIS ALERT: You are not alone, and help is available right now. "
+            "If you are in distress, please reach out immediately: "
+            "India Tele-MANAS Mental Health Helpline: 14416 or 1800-891-4416 (24x7 Free) | "
+            "Kiran Mental Health Helpline: 1800-599-0019 | National Emergency: 112."
         )
     }
 ]
