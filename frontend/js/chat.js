@@ -5,6 +5,7 @@
 
 let activeConversationId = null;
 let isGenerating = false;
+let lastSentMessage = "";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const user = Storage.getUser();
@@ -164,19 +165,25 @@ function handleSuggestion(buttonEl) {
   handleSendMessage();
 }
 
-async function handleSendMessage() {
+async function handleSendMessage(customText = null) {
   const chatInput = document.getElementById("chatInput");
-  const text = chatInput.value.trim();
+  const text = customText !== null ? customText.trim() : chatInput.value.trim();
 
   if (!text || isGenerating) return;
 
-  // Clear input
-  chatInput.value = "";
-  chatInput.style.height = "48px";
+  lastSentMessage = text;
 
-  // Append user bubble
-  appendMessageToUI("user", text, null, null, new Date().toISOString());
-  scrollToBottom();
+  // Clear input
+  if (customText === null) {
+    chatInput.value = "";
+    chatInput.style.height = "48px";
+  }
+
+  // Append user bubble if not a retry
+  if (customText === null) {
+    appendMessageToUI("user", text, null, null, new Date().toISOString());
+    scrollToBottom();
+  }
 
   // Show typing indicator
   setGenerating(true);
@@ -203,14 +210,26 @@ async function handleSendMessage() {
   } catch (err) {
     appendMessageToUI(
       "assistant",
-      `⚠️ Error: ${err.message || "Failed to communicate with medical server. Please retry."}`,
+      `⚠️ **Connection Notice:** ${err.message || "Could not reach the healthcare service. Please check your network and retry."}`,
       null,
-      { is_error: true },
+      { is_error: true, can_retry: true },
       new Date().toISOString()
     );
     scrollToBottom();
   } finally {
     setGenerating(false);
+  }
+}
+
+function retryLastMessage() {
+  if (lastSentMessage && !isGenerating) {
+    // Remove last error message bubble if present
+    const chatContainer = document.getElementById("chatMessages");
+    const lastMsg = chatContainer.querySelector(".message-row:last-of-type");
+    if (lastMsg && lastMsg.classList.contains("assistant")) {
+      lastMsg.remove();
+    }
+    handleSendMessage(lastSentMessage);
   }
 }
 
@@ -280,6 +299,17 @@ function appendMessageToUI(role, content, citations, safetyFlags, timestamp) {
     `;
   }
 
+  let retryButtonHtml = "";
+  if (safetyFlags && safetyFlags.can_retry) {
+    retryButtonHtml = `
+      <div>
+        <button class="chat-retry-btn" onclick="retryLastMessage()">
+          🔄 Retry Sending Message
+        </button>
+      </div>
+    `;
+  }
+
   row.innerHTML = `
     <div class="message-avatar">${role === 'user' ? '👤' : 'AI'}</div>
     <div class="message-content">
@@ -287,6 +317,7 @@ function appendMessageToUI(role, content, citations, safetyFlags, timestamp) {
         ${formattedHtml}
         ${emergencyCardHtml}
         ${citationsHtml}
+        ${retryButtonHtml}
       </div>
       <span class="message-time">${timeStr}</span>
     </div>
@@ -307,17 +338,32 @@ function formatMarkdown(text) {
   if (!text) return "";
   let formatted = escapeHtml(text);
 
+  // Headers: ### Header 3
+  formatted = formatted.replace(/^###\s+(.*)$/gm, '<h4 class="chat-heading">$1</h4>');
+  
+  // Headers: ## Header 2
+  formatted = formatted.replace(/^##\s+(.*)$/gm, '<h3 class="chat-heading">$1</h3>');
+
   // Bold **text**
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
   // Italic *text*
   formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Inline code `code`
+  formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.06);padding:0.1rem 0.3rem;border-radius:3px;">$1</code>');
+
+  // Blockquotes > text
+  formatted = formatted.replace(/^>\s+(.*)$/gm, '<div class="chat-callout">$1</div>');
+
+  // Numbered list items: 1. item
+  formatted = formatted.replace(/^\s*(\d+)\.\s+(.*)$/gm, '<div class="chat-list-item"><strong>$1.</strong> $2</div>');
+
+  // Bullet list items: - item or * item
+  formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, '<div class="chat-list-item">• $1</div>');
   
-  // Bullets
-  formatted = formatted.replace(/^\s*-\s+(.*)$/gm, '• $1');
-  
-  // Linebreaks
-  formatted = formatted.replace(/\n/g, '<br>');
+  // Linebreaks (convert \n to <br> if not already preceded by a block element)
+  formatted = formatted.replace(/([^>])\n/g, '$1<br>');
 
   return formatted;
 }

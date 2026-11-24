@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.user import User
 from backend.models.chat import Conversation, ChatMessage
-from backend.models.patient import MedicalCondition, Allergy, PatientMedication
+from backend.models.patient import PatientProfile, MedicalCondition, Allergy, PatientMedication
 from backend.schemas.chat import (
     MessageSendRequest,
     ChatMessageResponse,
@@ -60,6 +60,13 @@ async def send_chat_message(
     """
     Process patient chat input, execute RAG retrieval and AI reasoning, and store message thread.
     """
+    cleaned_content = msg_in.content.strip() if msg_in.content else ""
+    if not cleaned_content:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Message content cannot be empty."
+        )
+
     conversation = None
     if msg_in.conversation_id:
         conversation = db.query(Conversation).filter(
@@ -85,6 +92,20 @@ async def send_chat_message(
         db.refresh(conversation)
 
     # Gather patient background for clinical context
+    profile = db.query(PatientProfile).filter(PatientProfile.user_id == current_user.id).first()
+    demographics = []
+    if profile:
+        if profile.gender:
+            demographics.append(f"Gender: {profile.gender}")
+        if profile.date_of_birth:
+            from datetime import date
+            today = date.today()
+            dob = profile.date_of_birth
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            demographics.append(f"Age: {age} years")
+        if profile.blood_group:
+            demographics.append(f"Blood Group: {profile.blood_group}")
+
     conditions = [
         c.condition_name for c in db.query(MedicalCondition).filter(
             MedicalCondition.user_id == current_user.id,
@@ -103,6 +124,7 @@ async def send_chat_message(
         ).all()
     ]
     patient_context = {
+        "demographics": demographics,
         "conditions": conditions,
         "allergies": allergies,
         "medications": meds
