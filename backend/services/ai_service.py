@@ -7,7 +7,8 @@ and robust offline clinical knowledge generation.
 """
 import json
 import re
-from typing import List, Dict, Any, Optional, Tuple
+import asyncio
+from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
 from openai import AsyncOpenAI
 import openai
 
@@ -175,6 +176,36 @@ def _extract_primary_complaint_from_history(history: List[Dict[str, str]]) -> st
     return ""
 
 
+def condense_conversation_context(conversation_history: List[Dict[str, str]]) -> Tuple[Optional[str], List[Dict[str, str]]]:
+    """
+    Maintains bounded conversation history window (last 6-8 turns) while synthesizing
+    a high-level summary of earlier turns so active symptoms and patient answers
+    are never forgotten in long consultations.
+    """
+    if len(conversation_history) <= 8:
+        return (None, conversation_history)
+
+    earlier = conversation_history[:-6]
+    recent = conversation_history[-6:]
+
+    user_snippets = []
+    for m in earlier:
+        if m.get("role") == "user":
+            c = m.get("content", "").strip()
+            if len(c) > 3:
+                user_snippets.append(c[:80])
+
+    if user_snippets:
+        summary = (
+            f"[CONVERSATION CONTEXT SUMMARY - Earlier Consultation Turns]:\n"
+            f"The patient previously reported: {'; '.join(user_snippets[:4])}.\n"
+            f"Active recent conversation follows below."
+        )
+        return (summary, recent)
+
+    return (None, recent)
+
+
 async def generate_chat_response(
     user_message: str,
     conversation_history: List[Dict[str, str]],
@@ -290,9 +321,11 @@ async def generate_chat_response(
                 )
             })
 
-        # Add recent conversation turns (up to 8 messages to maintain strong memory)
-        recent_history = conversation_history[-8:] if len(conversation_history) > 8 else conversation_history
-        for turn in recent_history:
+        context_summary, recent_turns = condense_conversation_context(conversation_history)
+        if context_summary:
+            messages.append({"role": "system", "content": context_summary})
+
+        for turn in recent_turns:
             messages.append({"role": turn["role"], "content": turn["content"]})
 
         # Add current user message
@@ -334,6 +367,176 @@ async def generate_chat_response(
             conversation_history,
             patient_context
         )
+
+
+async def stream_chat_response(
+    user_message: str,
+    conversation_history: List[Dict[str, str]],
+    patient_context: Optional[Dict[str, Any]] = None
+) -> AsyncGenerator[Dict[str, Any], None]:
+    """
+    Progressively streams chat tokens using AsyncOpenAI or the intelligent clinical fallback engine.
+    Guarantees:
+    1. Independent emergency check happens FIRST.
+    2. Intent classification and selective RAG retrieval.
+    3. Yields structured events: start, token, emergency, done.
+    """
+    msg_stripped = user_message.strip()
+
+    # Step 1: Independent Deterministic Emergency Check (checked before any streaming)
+    emergency_eval = detect_emergency(msg_stripped)
+    if emergency_eval.is_emergency:
+        emergency_content = (
+            f"🚨 **IMMEDIATE EMERGENCY MEDICAL ALERT**\n\n"
+            f"{emergency_eval.guidance}\n\n"
+            f"**Detected Red Flags:** {', '.join(emergency_eval.triggers)}\n\n"
+            f"📞 **Emergency Contacts (India):**\n"
+            f"- **National Emergency Helpline:** 112\n"
+            f"- **Ambulance Services:** 102 / 108\n\n"
+            f"⚠️ *Please do not delay seeking professional emergency care. Sit in a comfortable resting position while help arrives.*"
+        )
+        yield {
+            "type": "emergency",
+            "content": emergency_content,
+            "citations": [],
+            "safety_flags": {
+                "emergency_detected": True,
+                "category": emergency_eval.category,
+                "triggers": emergency_eval.triggers
+            }
+        }
+        yield {"type": "done", "full_content": emergency_content, "tokens_used": 0}
+        return
+
+    # Step 2: Intent Classification
+    intent = _classify_intent(msg_stripped, conversation_history)
+
+    # Step 3: Targeted RAG Retrieval
+    citations = []
+    rag_context_text = ""
+    rag_passages = []
+
+    if intent in ["SYMPTOM_OR_QUERY", "FOLLOW_UP"]:
+        search_query = msg_stripped
+        if intent == "FOLLOW_UP":
+            prior_complaint = _extract_primary_complaint_from_history(conversation_history)
+            if prior_complaint:
+                search_query = f"{prior_complaint} {msg_stripped}"
+
+        rag_passages = rag_service.query(search_query, top_k=settings.RAG_TOP_K)
+        if rag_passages:
+            context_parts = []
+            for i, p in enumerate(rag_passages):
+                meta = p["metadata"]
+                citations.append({
+                    "title": meta.get("title", "Medical Reference"),
+                    "source": meta.get("source", "Official Medical Guideline"),
+                    "section": meta.get("section", ""),
+                    "url": meta.get("source_url", ""),
+                    "relevance_score": p.get("score", 0.0)
+                })
+                context_parts.append(
+                    f"[Source {i+1}: {meta.get('title', 'Unknown')} - {meta.get('section', '')}]\n{p['text']}"
+                )
+            rag_context_text = "\n\n".join(context_parts)
+
+    # Step 4: Build Patient Context Summary
+    patient_summary = ""
+    if patient_context:
+        demos = patient_context.get("demographics", [])
+        conds = patient_context.get("conditions", [])
+        allergies = patient_context.get("allergies", [])
+        meds = patient_context.get("medications", [])
+        parts = []
+        if demos:
+            parts.append(f"Demographics: {', '.join(demos)}")
+        if conds:
+            parts.append(f"Active Medical Conditions: {', '.join(conds)}")
+        if allergies:
+            parts.append(f"Known Drug/Food Allergies: {', '.join(allergies)}")
+        if meds:
+            parts.append(f"Current Prescribed Medications: {', '.join(meds)}")
+        if parts:
+            patient_summary = (
+                f"[PATIENT MEDICAL BACKGROUND - Cross-reference for safety and contraindications]:\n"
+                f"{'; '.join(parts)}"
+            )
+
+    # Yield start event with citations and metadata
+    yield {
+        "type": "start",
+        "citations": citations,
+        "safety_flags": {"emergency_detected": False, "grounded_rag": len(citations) > 0}
+    }
+
+    # Step 5: Streaming via AsyncOpenAI or Intelligent Fallback
+    client = get_async_openai()
+    full_text_parts = []
+
+    if client and settings.OPENAI_API_KEY:
+        messages = [{"role": "system", "content": SYSTEM_HEALTHCARE_PROMPT}]
+
+        if patient_summary:
+            messages.append({"role": "system", "content": patient_summary})
+
+        if rag_context_text:
+            messages.append({
+                "role": "system",
+                "content": (
+                    f"[VERIFIED MEDICAL REFERENCE PASSAGES]:\n{rag_context_text}\n\n"
+                    f"Use the above reference passages to ground your factual explanations and cite the source name. "
+                    f"If the passages do not fully cover the user's specific symptom, supplement with safe general clinical guidance "
+                    f"following the 'Assist First -> Ask Next' principle."
+                )
+            })
+
+        context_summary, recent_turns = condense_conversation_context(conversation_history)
+        if context_summary:
+            messages.append({"role": "system", "content": context_summary})
+
+        for turn in recent_turns:
+            messages.append({"role": turn["role"], "content": turn["content"]})
+
+        messages.append({"role": "user", "content": msg_stripped})
+
+        try:
+            stream = await client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=messages,
+                temperature=0.4,
+                max_tokens=750,
+                stream=True
+            )
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    token = chunk.choices[0].delta.content
+                    full_text_parts.append(token)
+                    yield {"type": "token", "content": token}
+
+            full_text = "".join(full_text_parts)
+            yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+            return
+        except Exception as e:
+            print(f"[OpenAI Stream Error] {e}. Falling back to intelligent streaming.")
+
+    # Fallback Streaming (smooth natural chunk delivery)
+    fallback_resp = _generate_intelligent_clinical_fallback(
+        msg_stripped,
+        citations,
+        rag_passages,
+        conversation_history,
+        patient_context
+    )
+    # Stream in small natural groups of words
+    words = fallback_resp.content.split(" ")
+    for i in range(0, len(words), 3):
+        chunk = " ".join(words[i:i+3]) + " "
+        full_text_parts.append(chunk)
+        yield {"type": "token", "content": chunk}
+        await asyncio.sleep(0.015)
+
+    full_text = fallback_resp.content
+    yield {"type": "done", "full_content": full_text, "tokens_used": 0}
 
 
 def _generate_intelligent_clinical_fallback(

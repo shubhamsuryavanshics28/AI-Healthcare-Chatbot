@@ -117,6 +117,56 @@ const API = {
       method: "POST",
       body: { content, conversation_id: conversationId }
     }),
+    sendMessageStream: async (content, conversationId = null, handlers = {}) => {
+      const { onToken, onStart, onEmergency, onError, onDone } = handlers;
+      const token = Storage.getToken();
+      const response = await fetch(`${API_BASE}/chat/message/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ content, conversation_id: conversationId })
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || `Request failed with status ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error("ReadableStream not supported by browser environment.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop(); // Keep unfinished chunk in buffer
+
+        for (const block of parts) {
+          const trimmed = block.trim();
+          if (trimmed.startsWith("data: ")) {
+            try {
+              const payload = JSON.parse(trimmed.replace(/^data:\s*/, ""));
+              const pType = payload.type;
+              if (pType === "start" && onStart) onStart(payload);
+              else if (pType === "token" && onToken) onToken(payload.content);
+              else if (pType === "emergency" && onEmergency) onEmergency(payload);
+              else if (pType === "error" && onError) onError(payload.message);
+              else if (pType === "done" && onDone) onDone(payload);
+            } catch (err) {
+              console.warn("SSE JSON parse error:", err, block);
+            }
+          }
+        }
+      }
+    },
     getHistory: () => apiRequest("/chat/history"),
     getConversation: (id) => apiRequest(`/chat/history/${id}`),
     deleteConversation: (id) => apiRequest(`/chat/history/${id}`, { method: "DELETE" })

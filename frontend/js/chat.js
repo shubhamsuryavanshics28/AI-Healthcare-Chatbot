@@ -165,6 +165,44 @@ function handleSuggestion(buttonEl) {
   handleSendMessage();
 }
 
+function renderCitationsHtml(citations) {
+  if (!citations || citations.length === 0) return "";
+  return `
+    <div class="citation-container">
+      <div class="citation-header">
+        <span>📚 Verified Medical Sources Grounding:</span>
+      </div>
+      ${citations.map((c, i) => `
+        <div class="citation-item">
+          [${i+1}] <strong>${escapeHtml(c.title)}</strong> 
+          ${c.section ? `• <em>${escapeHtml(c.section)}</em>` : ''} 
+          ${c.url ? `• <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Link</a>` : ''}
+          ${c.relevance_score ? `<span style="opacity: 0.8; font-size: 0.75rem;">(${Math.round(c.relevance_score * 100)}% Match)</span>` : ''}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderEmergencyCardHtml(safetyFlags) {
+  if (!safetyFlags || !safetyFlags.emergency_detected) return "";
+  return `
+    <div class="chat-emergency-card">
+      <div class="chat-emergency-header">
+        <span>🚨 Critical Warning Sign Detected:</span>
+        <span>${escapeHtml(safetyFlags.category || "Emergency Escalation")}</span>
+      </div>
+      <div>Please seek in-person emergency care without delay.</div>
+      <div class="emergency-btn-group">
+        <a href="tel:112" class="btn btn-danger btn-sm">📞 Call National Emergency 112</a>
+        <a href="tel:102" class="btn btn-outline btn-sm" style="color: #991b1b; border-color: #991b1b;">
+          🚑 Call Ambulance 102/108
+        </a>
+      </div>
+    </div>
+  `;
+}
+
 async function handleSendMessage(customText = null) {
   const chatInput = document.getElementById("chatInput");
   const text = customText !== null ? customText.trim() : chatInput.value.trim();
@@ -188,34 +226,105 @@ async function handleSendMessage(customText = null) {
   // Show typing indicator
   setGenerating(true);
 
+  let streamMessageRow = null;
+  let bubbleContentEl = null;
+  let accumulatedText = "";
+  let citationsData = [];
+  let safetyFlagsData = null;
+
   try {
-    const response = await API.chat.sendMessage(text, activeConversationId);
+    // Attempt progressive SSE streaming first
+    await API.chat.sendMessageStream(text, activeConversationId, {
+      onStart: (payload) => {
+        citationsData = payload.citations || [];
+        safetyFlagsData = payload.safety_flags || null;
+        if (payload.conversation_id && !activeConversationId) {
+          activeConversationId = payload.conversation_id;
+          const newUrl = `${window.location.pathname}?conv=${activeConversationId}`;
+          window.history.replaceState({ path: newUrl }, '', newUrl);
+          loadConversationList();
+        }
+      },
+      onToken: (token) => {
+        if (!streamMessageRow) {
+          const indicator = document.getElementById("typingIndicator");
+          if (indicator) indicator.style.display = "none";
 
-    // If new conversation, set active ID and reload sidebar
-    if (!activeConversationId && response.conversation_id) {
-      activeConversationId = response.conversation_id;
-      const newUrl = `${window.location.pathname}?conv=${activeConversationId}`;
-      window.history.replaceState({ path: newUrl }, '', newUrl);
-      await loadConversationList();
+          streamMessageRow = document.createElement("div");
+          streamMessageRow.className = "message-row assistant";
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          streamMessageRow.innerHTML = `
+            <div class="message-avatar">AI</div>
+            <div class="message-content">
+              <div class="message-bubble" id="streamingBubble"></div>
+              <span class="message-time">${timeStr}</span>
+            </div>
+          `;
+          const chatContainer = document.getElementById("chatMessages");
+          chatContainer.insertBefore(streamMessageRow, indicator);
+          bubbleContentEl = streamMessageRow.querySelector("#streamingBubble");
+        }
+        accumulatedText += token;
+        if (bubbleContentEl) {
+          bubbleContentEl.innerHTML = formatMarkdown(accumulatedText) +
+            renderEmergencyCardHtml(safetyFlagsData) +
+            renderCitationsHtml(citationsData);
+        }
+        scrollToBottom();
+      },
+      onEmergency: (payload) => {
+        const indicator = document.getElementById("typingIndicator");
+        if (indicator) indicator.style.display = "none";
+        appendMessageToUI("assistant", payload.content, payload.citations, payload.safety_flags, new Date().toISOString());
+        scrollToBottom();
+      },
+      onError: (errMessage) => {
+        throw new Error(errMessage);
+      },
+      onDone: (payload) => {
+        if (bubbleContentEl && payload.full_content) {
+          bubbleContentEl.innerHTML = formatMarkdown(payload.full_content) +
+            renderEmergencyCardHtml(safetyFlagsData) +
+            renderCitationsHtml(citationsData);
+        }
+        scrollToBottom();
+      }
+    });
+
+  } catch (streamErr) {
+    console.warn("Streaming fallback to standard HTTP POST:", streamErr);
+    if (!streamMessageRow) {
+      try {
+        const response = await API.chat.sendMessage(text, activeConversationId);
+
+        // If new conversation, set active ID and reload sidebar
+        if (!activeConversationId && response.conversation_id) {
+          activeConversationId = response.conversation_id;
+          const newUrl = `${window.location.pathname}?conv=${activeConversationId}`;
+          window.history.replaceState({ path: newUrl }, '', newUrl);
+          await loadConversationList();
+        }
+
+        appendMessageToUI(
+          "assistant",
+          response.content,
+          response.citations,
+          response.safety_flags,
+          response.created_at
+        );
+        scrollToBottom();
+      } catch (err) {
+        appendMessageToUI(
+          "assistant",
+          `⚠️ **Connection Notice:** ${err.message || "Could not reach the healthcare service. Please check your network and retry."}`,
+          null,
+          { is_error: true, can_retry: true },
+          new Date().toISOString()
+        );
+        scrollToBottom();
+      }
     }
-
-    appendMessageToUI(
-      "assistant",
-      response.content,
-      response.citations,
-      response.safety_flags,
-      response.created_at
-    );
-    scrollToBottom();
-  } catch (err) {
-    appendMessageToUI(
-      "assistant",
-      `⚠️ **Connection Notice:** ${err.message || "Could not reach the healthcare service. Please check your network and retry."}`,
-      null,
-      { is_error: true, can_retry: true },
-      new Date().toISOString()
-    );
-    scrollToBottom();
   } finally {
     setGenerating(false);
   }
@@ -260,44 +369,8 @@ function appendMessageToUI(role, content, citations, safetyFlags, timestamp) {
 
   const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const formattedHtml = formatMarkdown(content);
-
-  let citationsHtml = "";
-  if (citations && citations.length > 0) {
-    citationsHtml = `
-      <div class="citation-container">
-        <div class="citation-header">
-          <span>📚 Verified Medical Sources Grounding:</span>
-        </div>
-        ${citations.map((c, i) => `
-          <div class="citation-item">
-            [${i+1}] <strong>${escapeHtml(c.title)}</strong> 
-            ${c.section ? `• <em>${escapeHtml(c.section)}</em>` : ''} 
-            ${c.url ? `• <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Link</a>` : ''}
-            ${c.relevance_score ? `<span style="opacity: 0.8; font-size: 0.75rem;">(${Math.round(c.relevance_score * 100)}% Match)</span>` : ''}
-          </div>
-        `).join("")}
-      </div>
-    `;
-  }
-
-  let emergencyCardHtml = "";
-  if (safetyFlags && safetyFlags.emergency_detected) {
-    emergencyCardHtml = `
-      <div class="chat-emergency-card">
-        <div class="chat-emergency-header">
-          <span>🚨 Critical Warning Sign Detected:</span>
-          <span>${escapeHtml(safetyFlags.category || "Emergency Escalation")}</span>
-        </div>
-        <div>Please seek in-person emergency care without delay.</div>
-        <div class="emergency-btn-group">
-          <a href="tel:112" class="btn btn-danger btn-sm">📞 Call National Emergency 112</a>
-          <a href="tel:102" class="btn btn-outline btn-sm" style="color: #991b1b; border-color: #991b1b;">
-            🚑 Call Ambulance 102/108
-          </a>
-        </div>
-      </div>
-    `;
-  }
+  const citationsHtml = renderCitationsHtml(citations);
+  const emergencyCardHtml = renderEmergencyCardHtml(safetyFlags);
 
   let retryButtonHtml = "";
   if (safetyFlags && safetyFlags.can_retry) {

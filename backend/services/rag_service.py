@@ -67,6 +67,7 @@ class RAGService:
             name=self.collection_name,
             metadata={"description": "Official Medical Reference Knowledge Base"}
         )
+        self._query_cache: Dict[str, Any] = {}
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings using text-embedding-3-small or deterministic fallback."""
@@ -224,6 +225,9 @@ class RAGService:
         if not chunks:
             return 0
 
+        # Clear query cache when new documents are ingested
+        self._query_cache.clear()
+
         # Delete any existing chunks for this document title to allow clean updates
         try:
             self.collection.delete(where={"title": parsed["metadata"]["title"]})
@@ -279,6 +283,11 @@ class RAGService:
         if not query_text or self.collection.count() == 0:
             return []
 
+        # Check in-memory cache to eliminate duplicate embedding generation & vector search
+        cache_key = f"{query_text.strip().lower()}:{top_k}"
+        if not metadata_filter and cache_key in self._query_cache:
+            return self._query_cache[cache_key]
+
         stopwords = {
             'the', 'and', 'are', 'for', 'not', 'can', 'how', 'why', 'what', 'when', 'where', 'which', 'who', 'whom',
             'this', 'that', 'with', 'from', 'about', 'should', 'could', 'would', 'have', 'been',
@@ -324,7 +333,10 @@ class RAGService:
 
         # Sort descending by final relevance score
         matched_passages.sort(key=lambda x: x["score"], reverse=True)
-        return matched_passages[:top_k]
+        results = matched_passages[:top_k]
+        if not metadata_filter:
+            self._query_cache[cache_key] = results
+        return results
 
     def get_status(self) -> Dict[str, Any]:
         """Return collection size and diagnostic status."""

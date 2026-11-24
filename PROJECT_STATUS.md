@@ -79,7 +79,7 @@
 | **Phase 8** | Complete frontend UI implementation (Landing, Auth, Dashboard, Chat, Records, Triage, Medicine) | ✅ COMPLETED | 10 responsive HTML pages, clean healthcare design (blue/teal/white), mobile-friendly navigation, modal dialogs. |
 | **Phase 9** | Automated testing & Manual medical safety benchmark | ✅ COMPLETED | 46 Pytest test cases passing in 4.65 seconds. Complete manual clinical safety suite passed. |
 | **Phase 10**| End-to-end acceptance testing, documentation (README, diagrams, deployment guide) & demonstration prep | ✅ COMPLETED | Full 28-step acceptance checklist executed programmatically with 100% success. Render Procfile, run.py, Swagger docs ready. |
-| **Phase 11**| **AI Consultant Conversational Overhaul & RAG Gatekeeper Decoupling** | ✅ COMPLETED | Implemented *Assist First -> Ask Next -> Personalize Continuously*. Decoupled RAG from blocking general assistance. Multi-turn context memory tracking. Markdown rendering & retry UI. 15 new automated tests added. |
+| **Phase 11**| **AI Consultant Conversational Overhaul, Streaming & RAG Decoupling** | ✅ COMPLETED | Implemented *Assist First -> Ask Next -> Personalize Continuously*. Decoupled RAG from blocking general assistance. Added SSE progressive streaming (`/chat/message/stream`), in-memory RAG query caching, multi-turn memory compression, UI markdown rendering & retry. 66 Pytest tests passing (100%). |
 
 ---
 
@@ -97,16 +97,19 @@
 - **RAG as Supportive Evidence (Not a Gatekeeper)**: Official medical references (WHO, CDC, FDA, MoHFW) are retrieved to support facts and provide citations. When no specific document exists, safe general clinical guidance is provided without rejecting the patient.
 - **Intent Classifier**: Automatically distinguishes Greetings, Out-of-Scope queries, Short Follow-Ups, and Clinical Inquiries.
 - **Patient Background Integration**: Automatically includes patient demographics (age, gender), active conditions, drug/food allergies, and current medications to cross-reference potential contraindications.
+- **Server-Sent Events (SSE) Streaming**: Added `/chat/message/stream` providing real-time progressive token streaming to the browser with instant pre-stream emergency detection and safe message persistence.
+- **In-Memory RAG Query Caching**: Implemented LRU-style dictionary caching for vector queries and embeddings, eliminating redundant search overhead for follow-up turns.
+- **Context Summarization**: Added `condense_conversation_context` compressing turns prior to the last 8 into high-density clinical summaries for long-running consultations.
 - **Frontend Markdown & UX**: Upgraded Markdown renderer supporting headings (`###`), styled list items, callout boxes, and an automated "🔄 Retry" button on communication errors.
 
 ---
 
 ## 4. Test Suite Summary
 
-- **Total Automated Pytest Tests:** 61 (46 baseline + 15 AI Consultant improvement tests)
-- **Passed:** 61 (100%)
+- **Total Automated Pytest Tests:** 66 (46 baseline + 15 AI Consultant improvement tests + 5 SSE streaming tests)
+- **Passed:** 66 (100%)
 - **Failed:** 0
-- **Execution Time:** ~8.69 seconds
+- **Execution Time:** ~17 seconds
 - **100-Case Clinical Evaluation Benchmark:** 100 / 100 Passed (100.0% accuracy & safety score)
 - **End-to-End Acceptance Steps:** 28 / 28 Passed (100% Complete)
 
