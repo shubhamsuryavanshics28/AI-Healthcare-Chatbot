@@ -1,34 +1,27 @@
 """
 RAG Service: Medical Knowledge Extraction, Embedding, Ingestion, and Hybrid Retrieval
 Uses PyMuPDF for PDF extraction, ChromaDB for persistent vector storage,
-OpenAI text-embedding-3-small (with deterministic semantic fallback), and hybrid search.
+FastEmbed (BAAI/bge-small-en-v1.5) for local 384-dimensional dense vectors, and hybrid search.
 """
 import os
 import re
 import math
 import hashlib
+import logging
 from typing import List, Dict, Any, Optional
 import pymupdf
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from backend.config import settings
+from backend.services.embedding_service import embedding_service
 
-# Optional OpenAI client for embeddings
-_openai_client = None
-
-
-def get_openai_client():
-    global _openai_client
-    if _openai_client is None and settings.OPENAI_API_KEY:
-        from openai import OpenAI
-        _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    return _openai_client
+logger = logging.getLogger(__name__)
 
 
 class DenseFallbackEmbedder:
     """
     Deterministic normalized embedding generator based on subword hashing and TF-IDF.
-    Provides reliable, zero-latency vector embeddings when OpenAI API key is unavailable.
+    Maintained solely for testing backward compatibility and comparison with legacy data.
     """
     def __init__(self, dim: int = 384):
         self.dim = dim
@@ -36,7 +29,7 @@ class DenseFallbackEmbedder:
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         return [self.embed_query(t) for t in texts]
 
-    def embed_query(self, text: str) -> List[List[float]]:
+    def embed_query(self, text: str) -> List[float]:
         tokens = re.findall(r"\w+", text.lower())
         vec = [0.0] * self.dim
         if not tokens:
@@ -65,25 +58,28 @@ class RAGService:
         self.collection_name = settings.CHROMA_COLLECTION_NAME
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            metadata={"description": "Official Medical Reference Knowledge Base"}
+            metadata={
+                "description": "Official Medical Reference Knowledge Base (FastEmbed)",
+                "embedding_provider": "fastembed",
+                "embedding_model": settings.EMBEDDING_MODEL or "BAAI/bge-small-en-v1.5",
+                "embedding_dimension": 384,
+                "migration_version": "v1"
+            }
         )
         self._query_cache: Dict[str, Any] = {}
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings using text-embedding-3-small or deterministic fallback."""
-        client = get_openai_client()
-        if client and settings.OPENAI_API_KEY:
-            try:
-                response = client.embeddings.create(
-                    input=texts,
-                    model=settings.OPENAI_EMBEDDING_MODEL
-                )
-                return [item.embedding for item in response.data]
-            except Exception as e:
-                # If OpenAI API fails (rate limit, offline, quota), use fallback embedder
-                print(f"[RAG] OpenAI embedding generation failed ({e}), falling back to local embedder.")
-                return fallback_embedder.embed_documents(texts)
-        return fallback_embedder.embed_documents(texts)
+        """
+        Generate 384-dimensional dense embeddings for document chunks using FastEmbed.
+        Eliminates remote OpenAI embedding dependencies completely.
+        """
+        if not texts:
+            return []
+        try:
+            return embedding_service.embed_documents(texts)
+        except Exception as e:
+            logger.error(f"[RAG] FastEmbed document embedding failed: {e}")
+            raise RuntimeError(f"RAG embedding generation failed: {e}") from e
 
     def extract_text_from_pdf(self, file_path: str) -> Dict[str, Any]:
         """Extract text and metadata from a PDF file using PyMuPDF."""
@@ -294,7 +290,12 @@ class RAGService:
             'were', 'does', 'than', 'into', 'some', 'tell', 'give', 'help', 'today', 'please', 'know'
         }
 
-        query_embedding = self.generate_embeddings([query_text])[0]
+        try:
+            query_embedding = embedding_service.embed_query(query_text)
+        except Exception as e:
+            logger.error(f"[RAG] Failed to embed query with FastEmbed: {e}")
+            return []
+
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=min(top_k * 2, max(1, self.collection.count())),

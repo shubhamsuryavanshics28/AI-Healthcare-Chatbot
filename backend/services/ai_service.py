@@ -15,6 +15,7 @@ import openai
 from backend.config import settings
 from backend.services.emergency_detector import detect_emergency
 from backend.services.rag_service import rag_service
+from backend.services.llm_service import llm_service
 
 # Asynchronous OpenAI client instance
 _async_openai_client: Optional[AsyncOpenAI] = None
@@ -301,72 +302,56 @@ async def generate_chat_response(
                 f"{'; '.join(parts)}"
             )
 
-    # Step 5: Call OpenAI or use Intelligent Clinical Fallback
-    client = get_async_openai()
+    # Step 5: Execute LLM reasoning via unified LLM Service
+    sys_instruction_parts = [SYSTEM_HEALTHCARE_PROMPT]
+    if patient_summary:
+        sys_instruction_parts.append(patient_summary)
+    if rag_context_text:
+        sys_instruction_parts.append(
+            f"[VERIFIED MEDICAL REFERENCE PASSAGES]:\n{rag_context_text}\n\n"
+            f"Use the above reference passages to ground your factual explanations and cite the source name. "
+            f"If the passages do not fully cover the user's specific symptom, supplement with safe general clinical guidance "
+            f"following the 'Assist First -> Ask Next' principle."
+        )
 
-    if client and settings.OPENAI_API_KEY:
-        messages = [{"role": "system", "content": SYSTEM_HEALTHCARE_PROMPT}]
+    context_summary, recent_turns = condense_conversation_context(conversation_history)
+    if context_summary:
+        sys_instruction_parts.append(context_summary)
 
-        if patient_summary:
-            messages.append({"role": "system", "content": patient_summary})
+    full_system_instruction = "\n\n".join(sys_instruction_parts)
 
-        if rag_context_text:
-            messages.append({
-                "role": "system",
-                "content": (
-                    f"[VERIFIED MEDICAL REFERENCE PASSAGES]:\n{rag_context_text}\n\n"
-                    f"Use the above reference passages to ground your factual explanations and cite the source name. "
-                    f"If the passages do not fully cover the user's specific symptom, supplement with safe general clinical guidance "
-                    f"following the 'Assist First -> Ask Next' principle."
-                )
-            })
+    llm_result = await llm_service.generate_response(
+        system_instruction=full_system_instruction,
+        conversation_history=recent_turns,
+        user_message=msg_stripped
+    )
 
-        context_summary, recent_turns = condense_conversation_context(conversation_history)
-        if context_summary:
-            messages.append({"role": "system", "content": context_summary})
-
-        for turn in recent_turns:
-            messages.append({"role": turn["role"], "content": turn["content"]})
-
-        # Add current user message
-        messages.append({"role": "user", "content": msg_stripped})
-
-        try:
-            response = await client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=messages,
-                temperature=0.4,
-                max_tokens=750
-            )
-            ai_text = response.choices[0].message.content
-            tokens = response.usage.total_tokens if response.usage else 0
-
-            return AIChatResponse(
-                content=ai_text,
-                citations=citations,
-                safety_flags={"emergency_detected": False, "grounded_rag": len(citations) > 0},
-                is_emergency=False,
-                tokens_used=tokens
-            )
-        except (openai.RateLimitError, openai.APITimeoutError, openai.AuthenticationError, openai.APIConnectionError, Exception) as e:
-            print(f"[OpenAI Error] Chat completion error: {e}. Executing intelligent clinical fallback engine.")
-            return _generate_intelligent_clinical_fallback(
-                msg_stripped,
-                citations,
-                rag_passages,
-                conversation_history,
-                patient_context,
-                error_msg=str(e)
-            )
+    if not llm_result.is_fallback and llm_result.content:
+        return AIChatResponse(
+            content=llm_result.content,
+            citations=citations,
+            safety_flags={
+                "emergency_detected": False,
+                "grounded_rag": len(citations) > 0,
+                "llm_provider": llm_result.provider,
+                "model": llm_result.model,
+                "fallback_used": False
+            },
+            is_emergency=False,
+            tokens_used=llm_result.tokens_used
+        )
     else:
-        # No OpenAI API Key configured: Execute intelligent clinical fallback engine
-        return _generate_intelligent_clinical_fallback(
+        fallback = _generate_intelligent_clinical_fallback(
             msg_stripped,
             citations,
             rag_passages,
             conversation_history,
-            patient_context
+            patient_context,
+            error_msg=llm_result.error
         )
+        fallback.safety_flags["llm_provider"] = llm_result.provider
+        fallback.safety_flags["fallback_used"] = True
+        return fallback
 
 
 async def stream_chat_response(
@@ -462,81 +447,77 @@ async def stream_chat_response(
                 f"{'; '.join(parts)}"
             )
 
+    # Build consolidated system instruction
+    sys_instruction_parts = [SYSTEM_HEALTHCARE_PROMPT]
+    if patient_summary:
+        sys_instruction_parts.append(patient_summary)
+    if rag_context_text:
+        sys_instruction_parts.append(
+            f"[VERIFIED MEDICAL REFERENCE PASSAGES]:\n{rag_context_text}\n\n"
+            f"Use the above reference passages to ground your factual explanations and cite the source name. "
+            f"If the passages do not fully cover the user's specific symptom, supplement with safe general clinical guidance "
+            f"following the 'Assist First -> Ask Next' principle."
+        )
+
+    context_summary, recent_turns = condense_conversation_context(conversation_history)
+    if context_summary:
+        sys_instruction_parts.append(context_summary)
+
+    full_system_instruction = "\n\n".join(sys_instruction_parts)
+
     # Yield start event with citations and metadata
     yield {
         "type": "start",
         "citations": citations,
-        "safety_flags": {"emergency_detected": False, "grounded_rag": len(citations) > 0}
+        "safety_flags": {
+            "emergency_detected": False,
+            "grounded_rag": len(citations) > 0,
+            "llm_provider": settings.LLM_PROVIDER
+        }
     }
 
-    # Step 5: Streaming via AsyncOpenAI or Intelligent Fallback
-    client = get_async_openai()
+    # Step 5: Streaming via Unified LLM Service or Intelligent Fallback
     full_text_parts = []
+    tokens_streamed = 0
 
-    if client and settings.OPENAI_API_KEY:
-        messages = [{"role": "system", "content": SYSTEM_HEALTHCARE_PROMPT}]
+    try:
+        async for token, provider in llm_service.stream_response(
+            system_instruction=full_system_instruction,
+            conversation_history=recent_turns,
+            user_message=msg_stripped
+        ):
+            tokens_streamed += 1
+            full_text_parts.append(token)
+            yield {"type": "token", "content": token}
 
-        if patient_summary:
-            messages.append({"role": "system", "content": patient_summary})
-
-        if rag_context_text:
-            messages.append({
-                "role": "system",
-                "content": (
-                    f"[VERIFIED MEDICAL REFERENCE PASSAGES]:\n{rag_context_text}\n\n"
-                    f"Use the above reference passages to ground your factual explanations and cite the source name. "
-                    f"If the passages do not fully cover the user's specific symptom, supplement with safe general clinical guidance "
-                    f"following the 'Assist First -> Ask Next' principle."
-                )
-            })
-
-        context_summary, recent_turns = condense_conversation_context(conversation_history)
-        if context_summary:
-            messages.append({"role": "system", "content": context_summary})
-
-        for turn in recent_turns:
-            messages.append({"role": turn["role"], "content": turn["content"]})
-
-        messages.append({"role": "user", "content": msg_stripped})
-
-        try:
-            stream = await client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=messages,
-                temperature=0.4,
-                max_tokens=750,
-                stream=True
-            )
-            async for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    token = chunk.choices[0].delta.content
-                    full_text_parts.append(token)
-                    yield {"type": "token", "content": token}
-
+        if tokens_streamed > 0:
             full_text = "".join(full_text_parts)
             yield {"type": "done", "full_content": full_text, "tokens_used": 0}
             return
-        except Exception as e:
-            print(f"[OpenAI Stream Error] {e}. Falling back to intelligent streaming.")
+    except Exception as e:
+        print(f"[LLM Stream Notice] Provider stream interrupted or unavailable ({e}). Routing to clinical fallback.")
 
-    # Fallback Streaming (smooth natural chunk delivery)
-    fallback_resp = _generate_intelligent_clinical_fallback(
-        msg_stripped,
-        citations,
-        rag_passages,
-        conversation_history,
-        patient_context
-    )
-    # Stream in small natural groups of words
-    words = fallback_resp.content.split(" ")
-    for i in range(0, len(words), 3):
-        chunk = " ".join(words[i:i+3]) + " "
-        full_text_parts.append(chunk)
-        yield {"type": "token", "content": chunk}
-        await asyncio.sleep(0.015)
+    # Fallback Streaming (only if no tokens were yielded yet)
+    if tokens_streamed == 0:
+        fallback_resp = _generate_intelligent_clinical_fallback(
+            msg_stripped,
+            citations,
+            rag_passages,
+            conversation_history,
+            patient_context
+        )
+        words = fallback_resp.content.split(" ")
+        for i in range(0, len(words), 3):
+            chunk = " ".join(words[i:i+3]) + " "
+            full_text_parts.append(chunk)
+            yield {"type": "token", "content": chunk}
+            await asyncio.sleep(0.015)
 
-    full_text = fallback_resp.content
-    yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+        full_text = fallback_resp.content
+        yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+    else:
+        full_text = "".join(full_text_parts)
+        yield {"type": "done", "full_content": full_text, "tokens_used": 0}
 
 
 def _generate_intelligent_clinical_fallback(
@@ -648,6 +629,26 @@ def _generate_intelligent_clinical_fallback(
         )
 
     # 4. Check for Symptom-specific Clinical Responses (Assist First -> Ask Next -> Red Flags)
+    # Case 0: Anti-Prescription Safety Guardrail
+    if any(k in msg_lower for k in ["prescribe", "prescription", "rx:", "write me a prescription", "give me a prescription"]):
+        response_text = (
+            "I cannot prescribe medications or write official medical prescriptions. "
+            "As an AI healthcare assistant, I am not a licensed doctor, physician, or pharmacist. "
+            "Only a qualified, licensed healthcare professional can evaluate your condition and provide a prescription.\n\n"
+            "### 🌿 What You Should Do\n"
+            "- **Consult a Licensed Doctor:** Please schedule an appointment with a physician or visit a licensed medical clinic for an in-person assessment and valid prescription.\n"
+            "- **Speak with a Pharmacist:** For general over-the-counter advice, consult a licensed pharmacist.\n"
+            "- **Do Not Self-Medicate:** Never start prescription-only medications (such as antibiotics) without a doctor's explicit direction.\n\n"
+            "💬 *If you are experiencing specific symptoms (such as pain, fever, or cough), please describe them and I can provide safe supportive care guidance.*"
+        )
+        return AIChatResponse(
+            content=response_text,
+            citations=[],
+            safety_flags={"emergency_detected": False, "anti_prescription_guardrail": True},
+            is_emergency=False,
+            tokens_used=0
+        )
+
     # Case A: Headache
     if any(k in msg_lower for k in ["headache", "head ache", "head hurts", "pain in head", "migraine"]):
         response_text = (

@@ -46,12 +46,17 @@ async def lifespan(app: FastAPI):
     # 3. Verify / Ingest RAG documents
     rag_status = rag_service.get_status()
     if rag_status["total_chunks"] == 0:
-        print("[Startup] ChromaDB collection empty. Ingesting medical reference documents...")
-        if os.path.exists(DOCS_DIR):
+        print("[Startup] ChromaDB collection empty. Checking for legacy collection to migrate...")
+        from backend.services.chroma_migration import migrate_to_fastembed_collection
+        mig_res = migrate_to_fastembed_collection()
+        if mig_res.get("migrated_count", 0) > 0:
+            print(f"[Startup] Migrated {mig_res['migrated_count']} chunks to FastEmbed collection.")
+        elif os.path.exists(DOCS_DIR):
+            print("[Startup] Ingesting medical reference documents from disk via FastEmbed...")
             ingest_res = rag_service.ingest_directory(DOCS_DIR)
             print(f"[Startup] Ingested {len(ingest_res)} documents into ChromaDB.")
     else:
-        print(f"[Startup] ChromaDB collection verified ({rag_status['total_chunks']} chunks).")
+        print(f"[Startup] ChromaDB collection verified ({rag_status['total_chunks']} chunks in {rag_status['collection_name']}).")
 
     yield
 
