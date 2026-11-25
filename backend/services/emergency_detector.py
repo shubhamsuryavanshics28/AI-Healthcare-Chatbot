@@ -80,8 +80,8 @@ EMERGENCY_RULESETS = [
             r"\bnausea\b"
         ],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Symptoms strongly suggest a possible acute cardiac event or hypertensive emergency. "
-            "DO NOT drive yourself to the hospital. Immediately dial 112 (National Emergency) or 102/108 for an ambulance. "
+            "CRITICAL MEDICAL ALERT: These symptoms may indicate a serious medical emergency, including a possible heart or cardiovascular condition. "
+            "DO NOT drive yourself to the hospital. Immediately dial 112 (National Emergency Helpline) or 102 / 108 for emergency ambulance services. "
             "Sit in a comfortable, seated resting position while waiting for emergency responders."
         )
     },
@@ -242,55 +242,80 @@ def detect_emergency(text: str, severity: Optional[int] = None) -> EmergencyDete
     """
     Evaluates patient text and severity against clinical emergency criteria.
     Guarantees deterministic safety check unaffected by external LLM uptime or latency.
+    Extracts ALL distinct red flags and associated factors present across all rule sets.
     """
     if not text:
         return EmergencyDetectionResult(is_emergency=False)
 
     text_lower = text.lower()
     matched_triggers = []
-    triggered_category = None
-    triggered_guidance = None
+    matched_categories = []
+    primary_guidance = None
 
     # Check each emergency rule set
     for rule in EMERGENCY_RULESETS:
-        category_matched = False
         cat_triggers = []
 
         for trig_pat in rule["primary_triggers"]:
             matches = list(re.finditer(trig_pat, text_lower))
             for m in matches:
                 if not _is_negated(text_lower, m.start()):
-                    category_matched = True
-                    cat_triggers.append(m.group(0))
+                    matched_str = m.group(0).strip()
+                    if matched_str not in cat_triggers and matched_str not in matched_triggers:
+                        cat_triggers.append(matched_str)
 
-        if category_matched:
-            # If primary triggers match, check if associated factors are required or present
+        if cat_triggers:
             matched_triggers.extend(cat_triggers)
-            triggered_category = rule["category"]
-            triggered_guidance = rule["guidance"]
-            break
+            matched_categories.append(rule["category"])
+            if not primary_guidance:
+                primary_guidance = rule["guidance"]
+
+            # Also extract any associated factors mentioned (e.g. shortness of breath, dizziness)
+            for assoc_pat in rule.get("associated_factors", []):
+                assoc_matches = list(re.finditer(assoc_pat, text_lower))
+                for am in assoc_matches:
+                    if not _is_negated(text_lower, am.start()):
+                        assoc_str = am.group(0).strip()
+                        if assoc_str not in matched_triggers:
+                            matched_triggers.append(assoc_str)
+
+    # General check for associated high-risk clinical factors when an emergency is detected
+    if matched_categories:
+        general_associated_patterns = [
+            (r"\b(shortness\s+of\s+breath|difficulty\s+breathing|breathlessness)\b", "difficulty breathing"),
+            (r"\b(dizziness|dizzy|lightheaded(ness)?)\b", "dizziness"),
+            (r"\b(cold\s+sweat(s)?|profuse\s+sweating|diaphoresis)\b", "cold sweats"),
+            (r"\b(nausea|vomiting)\b", "nausea")
+        ]
+        for pat, label in general_associated_patterns:
+            m = re.search(pat, text_lower)
+            if m and not _is_negated(text_lower, m.start()):
+                matched_label = m.group(0).strip()
+                if matched_label not in matched_triggers and label not in matched_triggers:
+                    matched_triggers.append(matched_label)
 
     # Secondary check: High patient-reported severity (9 or 10) combined with acute high-risk keywords
-    if not triggered_category and severity is not None and severity >= 9:
+    if not matched_categories and severity is not None and severity >= 9:
         high_risk_words = ["chest", "breathing", "heart", "head", "pain", "bleeding", "dizzy", "collapsed"]
         for hw in high_risk_words:
             if re.search(rf"\b{hw}\b", text_lower):
                 matched_triggers.append(f"Severity rating {severity}/10 combined with acute symptom: {hw}")
-                triggered_category = "Acute Severe Symptom Presentation (Score >= 9)"
-                triggered_guidance = (
+                matched_categories.append("Acute Severe Symptom Presentation (Score >= 9)")
+                primary_guidance = (
                     "URGENT ATTENTION: Patient-reported symptom severity is critically elevated (9-10/10). "
                     "Severe acute symptoms require immediate in-person emergency department evaluation. "
                     "Dial 112 or visit the nearest emergency room immediately."
                 )
                 break
 
-    if triggered_category:
+    if matched_categories:
+        category_display = " / ".join(matched_categories)
         return EmergencyDetectionResult(
             is_emergency=True,
-            category=triggered_category,
+            category=category_display,
             triggers=matched_triggers,
             urgency_code="EMERGENCY",
-            guidance=triggered_guidance
+            guidance=primary_guidance
         )
 
     return EmergencyDetectionResult(

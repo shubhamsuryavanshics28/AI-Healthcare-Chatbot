@@ -349,3 +349,90 @@ User Query / Document Ingestion
    - On deployment/container restart, `backend/main.py` checks `medical_knowledge_fastembed_v1`. If empty, it migrates or re-indexes documents from `data/medical_docs/`.
 3. **Rollback Procedure:**
    - If rollback is ever required, change `CHROMA_COLLECTION_NAME=medical_knowledge` in `.env` or Render environment variables. The legacy collection and fallback embedder remain available and unharmed.
+
+---
+
+## 12. Phase 3.1 Verification Report: Conversational Intelligence, RAG Quality & Medical Safety
+
+**Phase:** 3.1 — Conversational Intelligence, RAG Quality & Medical Safety Improvements  
+**Date:** 2026-11-25  
+**Status:** ✅ Complete & Verified | 101/101 Tests Passing (9/9 New Phase 3.1 Tests Passing)
+
+### A. Root Cause Analysis & Resolutions
+
+#### 1. Issue A: Repetitive Consultation Responses / Conversational Amnesia
+- **Symptom:** When a user engaged in a multi-turn consultation (e.g. Turn 1: "I have a fever", Turn 2: "lasts 2 days, no other symptoms", Turn 3: "temp 102°F, no meds"), the chatbot repeatedly restarted clinical triage or asked the same clarifying questions (duration, temperature, medications) that the patient had already provided in prior turns.
+- **Root Cause:**
+  1. `ai_service.py` was condensing conversation context solely into a generic string without extracting structured clinical dimensions (symptom duration, temperature reading, absence of additional symptoms, medications taken).
+  2. If the active LLM provider encountered connection limits or fallback was invoked, the clinical fallback generator (`_generate_intelligent_clinical_fallback`) examined only the single `current_message` without cross-referencing prior user responses.
+- **Resolution (`backend/services/ai_service.py`):**
+  1. Created `extract_conversation_symptom_state(conversation_history, current_message)`: parses duration, temperature values, severity, absence of other symptoms, and medication status across all turns in the conversation.
+  2. Injected `[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]` into the LLM system prompt instructions with explicit constraints: *"Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."*
+  3. Upgraded `_generate_intelligent_clinical_fallback()` to summarize all established facts (e.g., *"Noted that your temperature is around 102°F, lasting 2 days, with no other symptoms reported..."*) and only ask next-stage, unasked triage questions (e.g., hydration tolerance, rash, breathing issues).
+
+#### 2. Issue B: Misleading RAG Percentage Match & Knowledge Base Context
+- **Symptom:** UI displayed badges such as *"121% Match"*, and unrelated or non-respiratory queries (like general fever or dehydration) frequently cited `Cdc Influenza Respiratory Guide`.
+- **Root Cause:**
+  1. Frontend `frontend/js/chat.js` calculated `${Math.round(c.relevance_score * 100)}% Match`. However, ArogyaAI's RAG ranker applies lexical keyword boundary bonuses on top of normalized cosine similarity ($[0.0, 1.0]$), which can legitimately push final scores up to $1.37$. Multiplying this by 100 caused impossible match values $> 100\%$.
+  2. The curated clinical knowledge base consists of 5 focused guidelines (28 chunks). Dehydration red flags (Chunk 6) and fever supportive care (Chunk 3) are explicitly housed inside `cdc_influenza_respiratory_guide.pdf`. In the absence of an allergy guideline, queries about allergic reactions also semantically fell back to general viral support passages.
+- **Resolution (`backend/services/rag_service.py` & `frontend/js/chat.js`):**
+  1. `rag_service.py` now explicitly exposes both `base_similarity` (exact cosine similarity $\in [0.0, 1.0]$) and `score` (hybrid reranked score).
+  2. Cleaned `renderCitationsHtml` in `frontend/js/chat.js` to eliminate misleading percentage displays. Guidelines are now presented with clean clinical badges: guideline title, publishing authority, section name, and direct official link.
+  3. Added prompt guardrails in `ai_service.py` instructing the assistant that if retrieved passages do not explicitly cover a patient's specific condition (such as allergies), it must not claim the guideline is an allergy document and should provide safe general clinical guidance following "Assist First -> Ask Next".
+
+#### 3. Issue C: Incomplete Response Endings & SSE Stream Interruption
+- **Symptom:** Chat responses occasionally cut off mid-sentence (e.g., *"If you take..."* or *"Please make sure"*).
+- **Root Cause:**
+  1. Token generation truncation when responses hit max token limits without terminal punctuation.
+  2. Transient HTTP/SSE dropouts between client and server where an interrupted generator left broken text in the UI without a closing status or disclaimer.
+- **Resolution (`backend/services/ai_service.py`):**
+  1. Implemented terminal punctuation inspection on streaming completion: if output length $> 40$ chars and does not end with terminal punctuation (`.`, `!`, `?`, etc.), appends a polite completion note: *"*(Consultation note: Response reached length limit. If you have further questions or if any part was unclear, please ask to continue.)*"*.
+  2. Wrapped streaming generator in guarded exception boundaries: if an active stream drops after tokens have already been emitted, it emits a clean network notice token followed by a proper `done` event instead of leaving broken sentences.
+
+#### 4. Issue D: Emergency Detection Multi-Trigger & Phrasing Safety
+- **Symptom:**
+  1. For patients experiencing multiple concurrent red flags (e.g. chest pain + difficulty breathing + dizziness), the emergency detector exited early on the first matched rule and reported only 1 red flag.
+  2. Emergency guidance contained overly definitive diagnostic language: *"symptoms strongly suggest a possible acute cardiac event"*, which violates clinical non-diagnostic boundaries.
+- **Resolution (`backend/services/emergency_detector.py` & `frontend/js/chat.js`):**
+  1. Refactored `detect_emergency()` to scan through all rulesets and collect all co-occurring red flags (primary triggers and associated factors) into `detected_red_flags`.
+  2. Replaced diagnostic language with careful, non-diagnostic observational guidance: *"These symptoms may indicate a serious medical emergency, including a possible heart or cardiovascular condition."*
+  3. Updated `frontend/js/chat.js` `renderEmergencyCardHtml()` to render each detected red flag individually as distinct UI alert badges.
+
+---
+
+### B. Automated Test Suite Results (101 / 101 Passing)
+
+```text
+================ 101 passed, 23 warnings in 158.16s (0:02:38) =================
+```
+
+| Test Suite File | Tests | Status | Scope |
+|---|---|---|---|
+| `tests/test_phase3_1_conversational_safety.py` | **9** | ✅ **PASSED** | Multi-turn symptom state memory, multi-trigger emergency detection, non-diagnostic guidance, RAG score bounds, stream interruption safety |
+| `tests/test_embedding_service.py` | **11** | ✅ **PASSED** | FastEmbed ONNX embeddings, collection isolation, idempotent migration |
+| `tests/test_llm_service.py` | **15** | ✅ **PASSED** | Gemini provider abstraction, streaming, fallback activation |
+| `tests/test_ai_consultant_improvements.py` | **15** | ✅ **PASSED** | Assist First -> Ask Next, anti-prescription, triage prioritization |
+| `tests/test_emergency_detector.py` | **8** | ✅ **PASSED** | Deterministic regex rules, negations, national helplines |
+| `tests/test_manual_safety_suite.py` | **8** | ✅ **PASSED** | 8 standard clinical safety benchmarks |
+| `tests/test_rag_service.py` | **4** | ✅ **PASSED** | PDF chunking, threshold filtering, status endpoint |
+| `tests/test_chat_streaming.py` | **5** | ✅ **PASSED** | SSE protocol, patient isolation, streaming emergency |
+| `tests/test_chat_api.py` | **4** | ✅ **PASSED** | REST endpoints, conversation lifecycle |
+| `tests/test_auth.py` | **8** | ✅ **PASSED** | User registration, login, JWT security |
+| `tests/test_patient_records.py` | **5** | ✅ **PASSED** | Conditions, allergies, medications CRUD |
+| `tests/test_medicine_service.py` | **4** | ✅ **PASSED** | Medicine lookup by generic and brand name |
+| `tests/test_triage.py` | **5** | ✅ **PASSED** | Emergency, Urgent, Routine, Self-care classification |
+| **Total** | **101** | ✅ **100% PASS** | **Zero failures, zero regressions** |
+
+---
+
+### C. Local Verification vs. Live Render Deployment Status
+
+- **Local Verification (This Session):**
+  - All 101 unit, integration, and safety tests passed.
+  - Multi-turn conversational memory verified across multi-turn fever/temperature sequence.
+  - Multi-trigger emergency detection verified with multiple red flags and non-diagnostic phrasing.
+  - RAG score calibration and clean citation rendering verified.
+- **Live Render Deployment (`https://arogya-ai-wdj7.onrender.com/`):**
+  - Changes are committed locally. A `git push` to `main` will trigger Render's automated build and redeployment.
+  - Startup self-healing in `backend/main.py` will automatically initialize `medical_knowledge_fastembed_v1` on first container start.
+

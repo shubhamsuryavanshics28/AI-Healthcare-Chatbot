@@ -170,14 +170,14 @@ function renderCitationsHtml(citations) {
   return `
     <div class="citation-container">
       <div class="citation-header">
-        <span>📚 Verified Medical Sources Grounding:</span>
+        <span>📚 Verified Clinical Guidelines Referenced:</span>
       </div>
       ${citations.map((c, i) => `
         <div class="citation-item">
           [${i+1}] <strong>${escapeHtml(c.title)}</strong> 
+          ${c.source ? `(${escapeHtml(c.source)})` : ''}
           ${c.section ? `• <em>${escapeHtml(c.section)}</em>` : ''} 
-          ${c.url ? `• <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Link</a>` : ''}
-          ${c.relevance_score ? `<span style="opacity: 0.8; font-size: 0.75rem;">(${Math.round(c.relevance_score * 100)}% Match)</span>` : ''}
+          ${c.url ? `• <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Guideline Link</a>` : ''}
         </div>
       `).join("")}
     </div>
@@ -186,13 +186,20 @@ function renderCitationsHtml(citations) {
 
 function renderEmergencyCardHtml(safetyFlags) {
   if (!safetyFlags || !safetyFlags.emergency_detected) return "";
+  const triggersList = Array.isArray(safetyFlags.triggers) && safetyFlags.triggers.length > 0
+    ? `<div style="margin-top: 0.35rem; font-size: 0.85rem; color: #7f1d1d;">
+         <strong>Detected Red Flags:</strong> ${safetyFlags.triggers.map(t => `<span class="badge badge-emergency" style="display:inline-block; margin: 0.15rem 0.25rem 0.15rem 0; font-size: 0.78rem;">⚠️ ${escapeHtml(t)}</span>`).join(" ")}
+       </div>`
+    : "";
+
   return `
     <div class="chat-emergency-card">
       <div class="chat-emergency-header">
         <span>🚨 Critical Warning Sign Detected:</span>
         <span>${escapeHtml(safetyFlags.category || "Emergency Escalation")}</span>
       </div>
-      <div>Please seek in-person emergency care without delay.</div>
+      <div>Please seek in-person emergency care without delay. Do not drive yourself.</div>
+      ${triggersList}
       <div class="emergency-btn-group">
         <a href="tel:112" class="btn btn-danger btn-sm">📞 Call National Emergency 112</a>
         <a href="tel:102" class="btn btn-outline btn-sm" style="color: #991b1b; border-color: #991b1b;">

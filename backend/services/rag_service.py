@@ -329,7 +329,8 @@ class RAGService:
                     matched_passages.append({
                         "text": doc_text,
                         "metadata": meta,
-                        "score": final_score
+                        "score": final_score,
+                        "base_similarity": round(base_similarity, 3)
                     })
 
         # Sort descending by final relevance score

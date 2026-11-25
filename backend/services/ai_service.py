@@ -8,9 +8,12 @@ and robust offline clinical knowledge generation.
 import json
 import re
 import asyncio
+import logging
 from typing import List, Dict, Any, Optional, Tuple, AsyncGenerator
 from openai import AsyncOpenAI
 import openai
+
+logger = logging.getLogger("arogya_ai.ai_service")
 
 from backend.config import settings
 from backend.services.emergency_detector import detect_emergency
@@ -177,6 +180,87 @@ def _extract_primary_complaint_from_history(history: List[Dict[str, str]]) -> st
     return ""
 
 
+def extract_conversation_symptom_state(conversation_history: List[Dict[str, str]], current_message: str) -> Dict[str, Any]:
+    """
+    Extracts persistent structured symptom dimensions from all user turns in the conversation:
+    - Primary complaint(s)
+    - Duration / onset (e.g. 2 days, since yesterday)
+    - Temperature reading (e.g. 102°F)
+    - Severity rating (e.g. 7/10)
+    - Stated absence of other symptoms
+    - Medication status (e.g. no medication taken yet)
+    """
+    user_turns = [m.get("content", "").strip() for m in conversation_history if m.get("role") == "user"]
+    if current_message.strip():
+        user_turns.append(current_message.strip())
+
+    combined_text = " ".join(user_turns)
+    combined_lower = combined_text.lower()
+
+    # 1. Primary complaints
+    complaints = []
+    symptom_keywords = {
+        "fever": ["fever", "temperature", "chills", "feeling hot"],
+        "headache": ["headache", "head ache", "migraine"],
+        "cough": ["cough", "coughing"],
+        "sore throat": ["sore throat", "throat pain", "throat irritation"],
+        "stomach pain": ["stomach pain", "abdominal pain", "acidity", "indigestion", "nausea"],
+        "chest pain": ["chest pain", "chest tightness", "chest pressure"],
+        "fatigue": ["fatigue", "tiredness", "exhaustion", "weakness"]
+    }
+    for symptom, syns in symptom_keywords.items():
+        if any(syn in combined_lower for syn in syns):
+            complaints.append(symptom)
+
+    # 2. Duration / onset
+    duration = None
+    dur_match = re.search(r"\b(\d+|two|three|four|five|several|a\s+few)\s*(days?|hours?|weeks?|months?)\b", combined_lower)
+    if dur_match:
+        duration = dur_match.group(0)
+    elif "since yesterday" in combined_lower or "from yesterday" in combined_lower:
+        duration = "since yesterday"
+    elif "last night" in combined_lower:
+        duration = "since last night"
+
+    # 3. Temperature reading
+    temperature = None
+    temp_match = re.search(r"\b(10[0-6](?:\.\d)?|9[6-9](?:\.\d)?|3[6-9](?:\.\d)?|4[0-2](?:\.\d)?)\s*(?:°\s*)?([fc]|deg|degrees|farenheit|fahrenheit|celsius)?\b", combined_text, re.IGNORECASE)
+    if temp_match:
+        val = temp_match.group(1)
+        unit = temp_match.group(2) or ("°C" if float(val) < 45 else "°F")
+        temperature = f"{val} {unit}".strip()
+
+    # 4. Severity rating
+    severity = None
+    sev_match = re.search(r"\b(\d{1,2})\s*\/\s*10\b", combined_lower)
+    if sev_match:
+        severity = f"{sev_match.group(1)}/10"
+    elif re.search(r"\b(mild|moderate|severe|high|intense)\b", combined_lower):
+        sev_word = re.search(r"\b(mild|moderate|severe|high|intense)\b", combined_lower).group(0)
+        severity = sev_word.capitalize()
+
+    # 5. Absence of other symptoms
+    no_other_symptoms = bool(re.search(r"\b(no\s+other\s+symptom|not\s+experiencing\s+any\s+other|none\s+other|nothing\s+else|no\s+other\s+issues)\b", combined_lower))
+
+    # 6. Medication status
+    medication_status = None
+    if re.search(r"\b(haven'?t\s+taken\s+any\s+(?:med|medication|medicine|meds?|pill|pills|tablet|tablets|anything)|no\s+medication|not\s+taken\s+any\s+(?:med|medication|medicine|meds?)|no\s+medicine|haven'?t\s+had\s+any\s+(?:med|medication|medicine))\b", combined_lower):
+        medication_status = "No medication taken yet"
+    elif re.search(r"\b(took|taken)\s+(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic)\b", combined_lower):
+        med_m = re.search(r"\b(took|taken)\s+(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic)\b", combined_lower)
+        medication_status = f"Reported taking {med_m.group(2).capitalize()}"
+
+    return {
+        "complaints": complaints,
+        "duration": duration,
+        "temperature": temperature,
+        "severity": severity,
+        "no_other_symptoms": no_other_symptoms,
+        "medication_status": medication_status,
+        "turn_count": len(user_turns)
+    }
+
+
 def condense_conversation_context(conversation_history: List[Dict[str, str]]) -> Tuple[Optional[str], List[Dict[str, str]]]:
     """
     Maintains bounded conversation history window (last 6-8 turns) while synthesizing
@@ -314,6 +398,52 @@ async def generate_chat_response(
             f"following the 'Assist First -> Ask Next' principle."
         )
 
+    # Structured symptom state tracking across entire consultation
+    symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
+    known_facts = []
+    if symptom_state["complaints"]:
+        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
+    if symptom_state["duration"]:
+        known_facts.append(f"Duration: {symptom_state['duration']}")
+    if symptom_state["temperature"]:
+        known_facts.append(f"Measured temperature: {symptom_state['temperature']}")
+    if symptom_state["severity"]:
+        known_facts.append(f"Severity: {symptom_state['severity']}")
+    if symptom_state["no_other_symptoms"]:
+        known_facts.append("Patient explicitly confirmed NO other symptoms are present")
+    if symptom_state["medication_status"]:
+        known_facts.append(f"Medication status: {symptom_state['medication_status']}")
+
+    if known_facts:
+        sys_instruction_parts.append(
+            f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
+            + "\n".join(f"- {fact}" for fact in known_facts)
+            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
+        )
+
+    # Structured symptom state tracking across entire consultation
+    symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
+    known_facts = []
+    if symptom_state["complaints"]:
+        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
+    if symptom_state["duration"]:
+        known_facts.append(f"Duration: {symptom_state['duration']}")
+    if symptom_state["temperature"]:
+        known_facts.append(f"Measured temperature: {symptom_state['temperature']}")
+    if symptom_state["severity"]:
+        known_facts.append(f"Severity: {symptom_state['severity']}")
+    if symptom_state["no_other_symptoms"]:
+        known_facts.append("Patient explicitly confirmed NO other symptoms are present")
+    if symptom_state["medication_status"]:
+        known_facts.append(f"Medication status: {symptom_state['medication_status']}")
+
+    if known_facts:
+        sys_instruction_parts.append(
+            f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
+            + "\n".join(f"- {fact}" for fact in known_facts)
+            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
+        )
+
     context_summary, recent_turns = condense_conversation_context(conversation_history)
     if context_summary:
         sys_instruction_parts.append(context_summary)
@@ -327,8 +457,13 @@ async def generate_chat_response(
     )
 
     if not llm_result.is_fallback and llm_result.content:
+        content_text = llm_result.content.strip()
+        terminal_punct = (".", "!", "?", ":", "]", ")", "*", "\n", "`", '"', "'")
+        if len(content_text) > 40 and not content_text.endswith(terminal_punct):
+            content_text += "\n\n*(Consultation note: Response reached length limit. If you have further questions or if any part was unclear, please ask to continue.)*"
+
         return AIChatResponse(
-            content=llm_result.content,
+            content=content_text,
             citations=citations,
             safety_flags={
                 "emergency_detected": False,
@@ -459,6 +594,29 @@ async def stream_chat_response(
             f"following the 'Assist First -> Ask Next' principle."
         )
 
+    # Structured symptom state tracking across entire consultation
+    symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
+    known_facts = []
+    if symptom_state["complaints"]:
+        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
+    if symptom_state["duration"]:
+        known_facts.append(f"Duration: {symptom_state['duration']}")
+    if symptom_state["temperature"]:
+        known_facts.append(f"Measured temperature: {symptom_state['temperature']}")
+    if symptom_state["severity"]:
+        known_facts.append(f"Severity: {symptom_state['severity']}")
+    if symptom_state["no_other_symptoms"]:
+        known_facts.append("Patient explicitly confirmed NO other symptoms are present")
+    if symptom_state["medication_status"]:
+        known_facts.append(f"Medication status: {symptom_state['medication_status']}")
+
+    if known_facts:
+        sys_instruction_parts.append(
+            f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
+            + "\n".join(f"- {fact}" for fact in known_facts)
+            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
+        )
+
     context_summary, recent_turns = condense_conversation_context(conversation_history)
     if context_summary:
         sys_instruction_parts.append(context_summary)
@@ -479,6 +637,7 @@ async def stream_chat_response(
     # Step 5: Streaming via Unified LLM Service or Intelligent Fallback
     full_text_parts = []
     tokens_streamed = 0
+    stream_failed_midway = False
 
     try:
         async for token, provider in llm_service.stream_response(
@@ -491,13 +650,22 @@ async def stream_chat_response(
             yield {"type": "token", "content": token}
 
         if tokens_streamed > 0:
-            full_text = "".join(full_text_parts)
-            yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+            full_text = "".join(full_text_parts).strip()
+            # Check for incomplete/truncated ending (e.g. truncated mid-sentence like "If you take")
+            terminal_punct = (".", "!", "?", ":", "]", ")", "*", "\n", "`", '"', "'")
+            if len(full_text) > 40 and not full_text.endswith(terminal_punct):
+                completion_notice = "\n\n*(Consultation note: Response reached length limit. If you have further questions or if any part was unclear, please ask to continue.)*"
+                full_text += completion_notice
+                yield {"type": "token", "content": completion_notice}
+
+            yield {"type": "done", "full_content": full_text, "tokens_used": tokens_streamed}
             return
     except Exception as e:
-        print(f"[LLM Stream Notice] Provider stream interrupted or unavailable ({e}). Routing to clinical fallback.")
+        logger.warning(f"[LLM Stream Notice] Provider stream interrupted ({e}). Tokens streamed so far: {tokens_streamed}.")
+        if tokens_streamed > 0:
+            stream_failed_midway = True
 
-    # Fallback Streaming (only if no tokens were yielded yet)
+    # Fallback Streaming
     if tokens_streamed == 0:
         fallback_resp = _generate_intelligent_clinical_fallback(
             msg_stripped,
@@ -515,9 +683,15 @@ async def stream_chat_response(
 
         full_text = fallback_resp.content
         yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+    elif stream_failed_midway:
+        # Stream disconnected after partial text: append clean completion notice rather than leaving broken sentence
+        completion_notice = "\n\n*(Notice: Network connection was interrupted. Please consult a doctor if your symptoms persist or ask to continue.)*"
+        yield {"type": "token", "content": completion_notice}
+        full_text = "".join(full_text_parts) + completion_notice
+        yield {"type": "done", "full_content": full_text, "tokens_used": tokens_streamed}
     else:
         full_text = "".join(full_text_parts)
-        yield {"type": "done", "full_content": full_text, "tokens_used": 0}
+        yield {"type": "done", "full_content": full_text, "tokens_used": tokens_streamed}
 
 
 def _generate_intelligent_clinical_fallback(
@@ -570,6 +744,9 @@ def _generate_intelligent_clinical_fallback(
             is_emergency=False,
             tokens_used=0
         )
+
+    # Extract conversation state to avoid repeating questions or identical boilerplate
+    symptom_state = extract_conversation_symptom_state(conversation_history, user_message)
 
     # 3. Follow-up handling (User answering previous questions)
     if intent == "FOLLOW_UP":
@@ -645,6 +822,58 @@ def _generate_intelligent_clinical_fallback(
             content=response_text,
             citations=[],
             safety_flags={"emergency_detected": False, "anti_prescription_guardrail": True},
+            is_emergency=False,
+            tokens_used=0
+        )
+
+    # Context-aware Fever handling (if user previously reported fever or currently asks about it)
+    is_fever_conversation = "fever" in symptom_state["complaints"] or any(k in msg_lower for k in ["fever", "temperature", "102", "101", "100", "103", "chills"])
+    if is_fever_conversation:
+        known_parts = []
+        if symptom_state["temperature"]:
+            known_parts.append(f"a temperature around **{symptom_state['temperature']}**")
+        if symptom_state["duration"]:
+            known_parts.append(f"lasting **{symptom_state['duration']}**")
+        if symptom_state["no_other_symptoms"]:
+            known_parts.append("with no other symptoms currently reported")
+        if symptom_state["medication_status"]:
+            known_parts.append(f"({symptom_state['medication_status'].lower()})")
+
+        history_summary_str = f"I note that you have {', '.join(known_parts)}." if known_parts else "I understand you are managing a fever."
+
+        unanswered_questions = []
+        if not any("age" in m.get("content", "").lower() for m in conversation_history):
+            unanswered_questions.append("What is the patient's age (adult, child, or infant)?")
+        if not symptom_state["medication_status"]:
+            unanswered_questions.append("Have you taken any fever-reducing medication (such as paracetamol) yet?")
+        if not any(k in " ".join(m.get("content", "").lower() for m in conversation_history) for k in ["condition", "allergy", "asthma", "liver"]):
+            unanswered_questions.append("Do you have any existing medical conditions or known medication allergies?")
+
+        questions_block = ""
+        if unanswered_questions[:2]:
+            questions_block = (
+                "### ❓ Questions to Help Me Assist You Better\n"
+                + "\n".join(f"{i+1}. {q}" for i, q in enumerate(unanswered_questions[:2]))
+                + "\n\n"
+            )
+
+        response_text = (
+            f"Thank you for providing that detail. {history_summary_str}\n\n"
+            f"### 📋 Clinical Assessment & Next Steps\n"
+            f"- **Medical Assessment:** The exact underlying cause cannot be established without an in-person clinical exam. If a fever of 102°F persists beyond 48–72 hours or trends higher, an in-person medical evaluation by a doctor is strongly recommended.\n"
+            f"- **Supportive Hydration:** Continue frequent sips of water, oral rehydration solution (ORS), or clear broth to counter fluid loss from sweating.\n"
+            f"- **Rest & Thermal Regulation:** Rest in a cool, well-ventilated room wearing light, loose clothing. Avoid cold water baths or heavy blankets which trap heat.\n"
+            f"- **Fever Management:** Over-the-counter paracetamol (acetaminophen) can provide symptom comfort when taken strictly within approved package guidelines (not exceeding adult daily limits, typically 3–4g/day) provided there is no chronic liver disease. Avoid aspirin or ibuprofen if seasonal dengue fever is possible in your area.\n\n"
+            f"{questions_block}"
+            f"### 🚨 Red Flags Requiring Immediate Emergency Care (Dial 112)\n"
+            f"- Temperature rising above 103°F (39.4°C) or not responding to baseline measures.\n"
+            f"- Severe headache, stiff neck, persistent vomiting, or new unexplained rash.\n"
+            f"- Shortness of breath, chest pain, extreme lethargy, or confusion."
+        )
+        return AIChatResponse(
+            content=response_text,
+            citations=citations,
+            safety_flags={"emergency_detected": False, "fever_management": True},
             is_emergency=False,
             tokens_used=0
         )
