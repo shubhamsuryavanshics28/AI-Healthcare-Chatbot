@@ -168,3 +168,19 @@ def test_rag_generate_embeddings_signature_compatibility():
     assert len(embs) == 1
     assert len(embs[0]) == 384
     assert isinstance(embs[0], list)
+
+
+def test_rag_service_reload_collection_safeguard():
+    """Verify that reload_collection redirects legacy collection to target FastEmbed collection."""
+    original_setting = settings.CHROMA_COLLECTION_NAME
+    try:
+        settings.CHROMA_COLLECTION_NAME = "medical_knowledge"
+        rag_service.reload_collection()
+        assert rag_service.collection_name == "medical_knowledge_fastembed_v1"
+        assert settings.CHROMA_COLLECTION_NAME == "medical_knowledge_fastembed_v1"
+        assert rag_service.collection.name == "medical_knowledge_fastembed_v1"
+        assert rag_service.collection.metadata.get("embedding_provider") == "fastembed"
+        assert rag_service.collection.metadata.get("embedding_dimension") == 384
+    finally:
+        settings.CHROMA_COLLECTION_NAME = original_setting
+        rag_service.reload_collection()

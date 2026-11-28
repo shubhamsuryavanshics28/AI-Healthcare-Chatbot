@@ -58,7 +58,7 @@ def _is_negated(text: str, match_start: int) -> bool:
 # Medically categorized emergency rule sets
 EMERGENCY_RULESETS = [
     {
-        "category": "Suspected Acute Coronary Syndrome / Cardiac Event",
+        "category": "Potential Cardiac / Cardiovascular Warning Signs",
         "primary_triggers": [
             r"\bcrushing\s+(chest\s+pain|chest\s+pressure|retrosternal\s+pain)\b",
             r"\bsevere\s+chest\s+pain\b",
@@ -86,7 +86,7 @@ EMERGENCY_RULESETS = [
         )
     },
     {
-        "category": "Severe Acute Respiratory Distress & Airway Compromise",
+        "category": "Potential Severe Respiratory Distress / Airway Warning Signs",
         "primary_triggers": [
             r"\bcan('?t|not)\s+breathe\b",
             r"\bgasping\s+for\s+(air|breath)\b",
@@ -105,13 +105,13 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Severe breathing difficulty, choking, or airway obstruction detected. "
-            "This is a life-threatening emergency. Call 112 / 102 immediately. "
-            "Sit upright to keep airways open, or perform anti-choking first aid if airway is blocked."
+            "CRITICAL MEDICAL ALERT: Severe breathing difficulty or airway compromise detected. "
+            "This is a serious medical emergency. DO NOT drive yourself. Immediately call 112 or 102 / 108 for emergency ambulance services. "
+            "Sit upright to keep airways open while emergency responders are en route."
         )
     },
     {
-        "category": "Suspected Acute Stroke (FAST Protocol)",
+        "category": "Potential Stroke Warning Signs (FAST Protocol)",
         "primary_triggers": [
             r"\bfacial\s+droop(ing)?\b",
             r"\bface\s+(is\s+)?(drooping|numb|sagging)\b",
@@ -128,13 +128,13 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Potential stroke symptoms detected (FAST Protocol: Face, Arms, Speech, Time). "
-            "Time lost is brain lost. Seek emergency hospital intervention IMMEDIATELY. "
-            "Dial 112 / 102. Note the exact time when symptoms first started."
+            "CRITICAL MEDICAL ALERT: Symptoms consistent with acute neurological warning signs (FAST: Face, Arms, Speech, Time) detected. "
+            "Immediate hospital evaluation is essential. DO NOT drive yourself. "
+            "Dial 112 or 102 / 108 immediately for an ambulance. Note the exact time when symptoms first began."
         )
     },
     {
-        "category": "Severe Anaphylaxis / Acute Systemic Allergic Reaction",
+        "category": "Potential Severe Allergic Reaction / Anaphylaxis Warning Signs",
         "primary_triggers": [
             r"\banaphylaxis\b",
             r"\bsevere\s+allergic\s+reaction\b",
@@ -150,13 +150,13 @@ EMERGENCY_RULESETS = [
             r"\bvomiting\b"
         ],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Severe systemic allergic reaction / anaphylaxis suspected. "
-            "If an epinephrine autoinjector (EpiPen) is prescribed and available, administer it immediately. "
-            "Call 112 / 102 without delay."
+            "CRITICAL MEDICAL ALERT: Possible severe systemic allergic reaction (anaphylaxis) detected. "
+            "If an epinephrine autoinjector (EpiPen) has been prescribed and is available, administer it immediately as directed. "
+            "Call 112 or 102 / 108 without delay. Do not drive yourself."
         )
     },
     {
-        "category": "Severe Uncontrolled Bleeding / Massive Trauma",
+        "category": "Potential Severe Bleeding / Trauma Warning Signs",
         "primary_triggers": [
             r"\bspurting\s+blood\b",
             r"\bsevere\s+uncontrolled\s+bleeding\b",
@@ -175,13 +175,13 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Acute massive hemorrhage, internal GI bleeding, or open fracture detected. "
+            "CRITICAL MEDICAL ALERT: Acute massive bleeding or serious physical trauma detected. "
             "Apply continuous firm, direct pressure with a clean cloth for external bleeding. Do not move broken bones. "
-            "Call 112 / 102 immediately. Keep the patient warm and lying flat."
+            "Call 112 or 102 / 108 immediately. Keep the person calm, warm, and lying flat while awaiting responders."
         )
     },
     {
-        "category": "Neurological Crisis / Severe Altered State",
+        "category": "Potential Neurological Crisis Warning Signs",
         "primary_triggers": [
             r"\bunconscious\b",
             r"\bunresponsive\b",
@@ -199,13 +199,13 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Acute neurological crisis (suspected seizure, intracranial hemorrhage, or meningitis). "
-            "Place patient in recovery position if breathing. Do not put anything in the mouth. "
-            "Dial 112 / 102 for immediate emergency medical dispatch."
+            "CRITICAL MEDICAL ALERT: Acute neurological warning signs or altered responsiveness detected. "
+            "Place the person in the recovery position if breathing. Do not put anything in the mouth. "
+            "Dial 112 or 102 / 108 for immediate emergency medical dispatch."
         )
     },
     {
-        "category": "Acute Metabolic Crisis & Poisoning",
+        "category": "Potential Acute Metabolic Crisis / Toxicity Warning Signs",
         "primary_triggers": [
             r"\b(fruity|acetone)\s+(breath|odor)\b",
             r"\bdiabetic\s+ketoacidosis\b",
@@ -217,8 +217,8 @@ EMERGENCY_RULESETS = [
         ],
         "associated_factors": [],
         "guidance": (
-            "CRITICAL MEDICAL ALERT: Acute metabolic emergency, severe toxicity, or acute surgical abdomen detected. "
-            "Seek emergency room medical attention immediately. Dial 112 / 102 without delay."
+            "CRITICAL MEDICAL ALERT: Severe metabolic or potential toxicity symptoms detected. "
+            "Immediate emergency department evaluation is necessary. Dial 112 or 102 / 108 without delay. Do not attempt to drive yourself."
         )
     },
     {

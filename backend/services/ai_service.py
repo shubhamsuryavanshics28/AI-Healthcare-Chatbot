@@ -38,8 +38,8 @@ SYSTEM_HEALTHCARE_PROMPT = """You are "ArogyaAI", a dedicated, compassionate, an
 
 CORE CLINICAL METHODOLOGY:
 Follow the "Assist First -> Ask Next -> Personalize Continuously" principle in all interactions:
-1. ASSIST FIRST (Immediate Practical Self-Care):
-   Whenever a patient mentions any symptom or health complaint, ALWAYS provide safe, practical, actionable relief measures in your very first response. Do not simply express sympathy or immediately bombard them with questions.
+1. ASSIST FIRST (Immediate Practical Self-Care on Initial Presentation):
+   Whenever a patient first describes a symptom, provide safe, practical, actionable relief measures.
    Examples of practical assistance:
    - Hydration (water, electrolytes, warm fluids).
    - Resting in a calm, quiet, or darkened room.
@@ -53,29 +53,27 @@ Follow the "Assist First -> Ask Next -> Personalize Continuously" principle in a
    Provide brief, clear, reassuring explanations of common, benign possibilities (e.g., tension, eye strain, dehydration, mild viral infection, lack of sleep, dietary acidity).
    STRICT RULE: NEVER state a definitive diagnosis (avoid saying "You have X"; say "These symptoms are often seen in... or could be related to...").
 
-3. ASK RELEVANT FOLLOW-UP QUESTIONS (1 to 3 max):
-   Progressively ask 1 to 3 targeted, logical questions to better understand the situation:
-   - Duration (when did it begin?)
+3. ASK RELEVANT FOLLOW-UP QUESTIONS (1 to 2 max):
+   Progressively ask 1 to 2 targeted, logical questions to better understand the situation:
    - Quality / Location (where is the pain, is it sharp/dull/throbbing?)
-   - Severity (on a scale of 1 to 10)
-   - Accompanying symptoms (fever, rash, nausea, etc.)
+   - Accompanying warning signs (difficulty breathing, stiff neck, rash, etc.)
    CRITICAL CONVERSATION RULES:
-   - NEVER ask 8 to 10 questions at once.
-   - NEVER repeat questions that the patient has already answered earlier in the conversation history!
-   - If the patient already told you the duration or severity in a previous message, acknowledge it and move forward.
+   - NEVER repeat questions that the patient has already answered earlier in the consultation!
+   - NEVER ask about symptoms the patient has already explicitly denied.
+   - If the patient already told you the duration, temperature, or severity in a previous message, acknowledge it and move forward.
 
 4. WHEN TO SEEK MEDICAL CARE (Red Flags):
    Always explain clear warning signs and red flags that warrant visiting a clinic, consulting a doctor, or seeking immediate emergency care.
 
-CONVERSATIONAL BEHAVIOR & TONE:
-- Be warm, helpful, natural, and conversational, similar to a knowledgeable medical counselor.
-- Handle greetings ("hello", "good morning", "how are you") warmly and briefly introduce how you can help.
-- Understand spelling mistakes, informal phrasing, and incomplete sentences smoothly.
-- Adapt subsequent responses based on prior answers:
-  - If a patient says "since yesterday" -> acknowledge: "Since this has been present since yesterday..."
-  - If a patient says "it is getting worse" -> recognize the escalation and appropriately prioritize medical evaluation.
-  - If a patient reports duration >7-10 days -> recommend in-person medical evaluation.
-- If a patient switches topics or mentions a new symptom, pivot seamlessly while noting relevant history.
+CONVERSATIONAL CONTINUITY & AVOIDING REPETITIVE SELF-CARE:
+- Turn 1 (Initial Presentation): Provide immediate practical relief measures (Assist First), non-diagnostic explanations, and 1-2 initial clarifying questions.
+- Subsequent Turns (Follow-Up / Clarifications):
+  - DO NOT repeat the entire list of self-care advice (hydration, rest, dark room) you already provided in earlier messages.
+  - Acknowledge newly reported facts directly and briefly (e.g., "Thank you for noting your temperature is 102°F and that you haven't taken any medication yet.").
+  - Focus specifically on what this new information means clinically:
+    - E.g., for a 102°F fever lasting 2 days without other symptoms: explain that while fever is a normal immune response, a persistent 102°F reading warrants monitoring, fluid replacement, and professional evaluation if it does not improve within 48-72 hours or if warning signs appear.
+    - Ask only relevant unasked questions (e.g., patient age, difficulty drinking fluids, known chronic conditions).
+  - Do NOT re-ask questions the patient has already answered or symptoms they have explicitly denied.
 
 MEDICATION SAFETY & PATIENT BACKGROUND:
 - If [PATIENT MEDICAL BACKGROUND] is provided (Known Conditions, Allergies, Current Medications):
@@ -86,10 +84,10 @@ MEDICATION SAFETY & PATIENT BACKGROUND:
 EVIDENCE-BASED RAG GROUNDING:
 - When [VERIFIED MEDICAL REFERENCE PASSAGES] are provided, ground your clinical points in that evidence and cite the source/section.
 - If medical reference passages are NOT provided or do not match: draw upon your broad, safe, verified medical knowledge. NEVER say "our knowledge base does not contain an exact protocol match" or refuse to assist.
-- NEVER invent fictitious medical sources, citations, or URLs.
+- NEVER invent fictitious medical sources, citations, or URLs. Never imply that an unrelated reference guideline covers a condition absent from its text.
 
 EMERGENCY SUPREMACY:
-- If acute red flags appear (crushing chest pain radiating to arm/jaw, acute shortness of breath, sudden facial drooping/speech loss, uncontrolled bleeding, severe trauma, anaphylaxis), IMMEDIATELY advise dialing 112 / 102 or reaching the nearest hospital.
+- If acute red flags appear (crushing chest pain radiating to arm/jaw, acute shortness of breath, sudden facial drooping/speech loss, uncontrolled bleeding, severe trauma, anaphylaxis), IMMEDIATELY advise dialing 112 / 102 or reaching the nearest hospital. Do not drive independently.
 """
 
 
@@ -180,78 +178,115 @@ def _extract_primary_complaint_from_history(history: List[Dict[str, str]]) -> st
     return ""
 
 
+SYMPTOM_DEFINITIONS = {
+    "fever": ["fever", "high temperature", "chills", "feeling feverish", "pyrexia"],
+    "chest pain": ["chest pain", "chest tightness", "chest pressure", "pain in chest"],
+    "headache": ["headache", "head ache", "migraine", "head pain"],
+    "cough": ["cough", "coughing", "dry cough", "wet cough"],
+    "sore throat": ["sore throat", "throat pain", "throat irritation"],
+    "shortness of breath": ["shortness of breath", "difficulty breathing", "breathlessness", "dyspnea"],
+    "stomach pain": ["stomach pain", "abdominal pain", "belly ache", "stomach ache"],
+    "nausea": ["nausea", "feeling nauseous", "queasy"],
+    "vomiting": ["vomiting", "throwing up", "threw up"],
+    "dizziness": ["dizziness", "dizzy", "lightheaded", "lightheadedness"],
+    "fatigue": ["fatigue", "tired", "tiredness", "exhaustion", "feeling weak", "body weakness"],
+    "rash": ["rash", "skin rash", "hives"]
+}
+
+
 def extract_conversation_symptom_state(conversation_history: List[Dict[str, str]], current_message: str) -> Dict[str, Any]:
     """
-    Extracts persistent structured symptom dimensions from all user turns in the conversation:
-    - Primary complaint(s)
-    - Duration / onset (e.g. 2 days, since yesterday)
-    - Temperature reading (e.g. 102°F)
-    - Severity rating (e.g. 7/10)
-    - Stated absence of other symptoms
-    - Medication status (e.g. no medication taken yet)
+    Extracts persistent structured symptom dimensions turn-by-turn with support for:
+    - Negation handling ("don't have chest pain", "no headache")
+    - Temporal correction (latest temperature, duration, or medication overrides older)
+    - Distinguishing confirmed positive symptoms, explicitly denied symptoms, and unknown state
+    - Stated absence of additional symptoms ("no other symptoms right now")
     """
     user_turns = [m.get("content", "").strip() for m in conversation_history if m.get("role") == "user"]
     if current_message.strip():
         user_turns.append(current_message.strip())
 
-    combined_text = " ".join(user_turns)
-    combined_lower = combined_text.lower()
-
-    # 1. Primary complaints
-    complaints = []
-    symptom_keywords = {
-        "fever": ["fever", "temperature", "chills", "feeling hot"],
-        "headache": ["headache", "head ache", "migraine"],
-        "cough": ["cough", "coughing"],
-        "sore throat": ["sore throat", "throat pain", "throat irritation"],
-        "stomach pain": ["stomach pain", "abdominal pain", "acidity", "indigestion", "nausea"],
-        "chest pain": ["chest pain", "chest tightness", "chest pressure"],
-        "fatigue": ["fatigue", "tiredness", "exhaustion", "weakness"]
-    }
-    for symptom, syns in symptom_keywords.items():
-        if any(syn in combined_lower for syn in syns):
-            complaints.append(symptom)
-
-    # 2. Duration / onset
+    complaints = set()
+    denied_symptoms = set()
     duration = None
-    dur_match = re.search(r"\b(\d+|two|three|four|five|several|a\s+few)\s*(days?|hours?|weeks?|months?)\b", combined_lower)
-    if dur_match:
-        duration = dur_match.group(0)
-    elif "since yesterday" in combined_lower or "from yesterday" in combined_lower:
-        duration = "since yesterday"
-    elif "last night" in combined_lower:
-        duration = "since last night"
-
-    # 3. Temperature reading
     temperature = None
-    temp_match = re.search(r"\b(10[0-6](?:\.\d)?|9[6-9](?:\.\d)?|3[6-9](?:\.\d)?|4[0-2](?:\.\d)?)\s*(?:°\s*)?([fc]|deg|degrees|farenheit|fahrenheit|celsius)?\b", combined_text, re.IGNORECASE)
-    if temp_match:
-        val = temp_match.group(1)
-        unit = temp_match.group(2) or ("°C" if float(val) < 45 else "°F")
-        temperature = f"{val} {unit}".strip()
-
-    # 4. Severity rating
     severity = None
-    sev_match = re.search(r"\b(\d{1,2})\s*\/\s*10\b", combined_lower)
-    if sev_match:
-        severity = f"{sev_match.group(1)}/10"
-    elif re.search(r"\b(mild|moderate|severe|high|intense)\b", combined_lower):
-        sev_word = re.search(r"\b(mild|moderate|severe|high|intense)\b", combined_lower).group(0)
-        severity = sev_word.capitalize()
-
-    # 5. Absence of other symptoms
-    no_other_symptoms = bool(re.search(r"\b(no\s+other\s+symptom|not\s+experiencing\s+any\s+other|none\s+other|nothing\s+else|no\s+other\s+issues)\b", combined_lower))
-
-    # 6. Medication status
+    no_other_symptoms = False
     medication_status = None
-    if re.search(r"\b(haven'?t\s+taken\s+any\s+(?:med|medication|medicine|meds?|pill|pills|tablet|tablets|anything)|no\s+medication|not\s+taken\s+any\s+(?:med|medication|medicine|meds?)|no\s+medicine|haven'?t\s+had\s+any\s+(?:med|medication|medicine))\b", combined_lower):
-        medication_status = "No medication taken yet"
-    elif re.search(r"\b(took|taken)\s+(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic)\b", combined_lower):
-        med_m = re.search(r"\b(took|taken)\s+(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic)\b", combined_lower)
-        medication_status = f"Reported taking {med_m.group(2).capitalize()}"
+
+    for turn in user_turns:
+        turn_clean = turn.strip()
+        turn_lower = turn_clean.lower()
+        if not turn_lower:
+            continue
+
+        # 1. Symptom tracking with negation & chronological correction
+        for sym_name, syns in SYMPTOM_DEFINITIONS.items():
+            for syn in syns:
+                for match in re.finditer(rf"\b{re.escape(syn)}\b", turn_lower):
+                    m_start = match.start()
+                    m_end = match.end()
+                    pre_window = turn_lower[max(0, m_start - 35):m_start]
+                    # Respect clause boundaries (, but / . / ; / however) so negation in prior clause does not spill over
+                    clause_segments = re.split(r"[,;.]\s*|\b(?:but|however|although|except|yet)\b\s*", pre_window)
+                    active_pre_window = clause_segments[-1] if clause_segments else pre_window
+
+                    is_neg = bool(re.search(r"\b(no|not|don'?t\s+have|without|denies|denied|free\s+of|negative\s+for|ruled\s+out|neither|nor|zero|never|haven'?t\s+had)\b", active_pre_window))
+                    if not is_neg:
+                        post_window = turn_lower[m_end:min(len(turn_lower), m_end + 25)]
+                        is_neg = bool(re.search(r"^\s*(is\s+)?(absent|ruled\s+out|resolved|gone|stopped|negative)\b", post_window))
+
+                    if is_neg:
+                        denied_symptoms.add(sym_name)
+                        complaints.discard(sym_name)
+                    else:
+                        complaints.add(sym_name)
+                        denied_symptoms.discard(sym_name)
+
+        # 2. General absence of other symptoms
+        if re.search(r"\b(no\s+other\s+symptoms?|not\s+experiencing\s+any\s+other|none\s+other|nothing\s+else|no\s+other\s+issues|no\s+other\s+complaints?)\b", turn_lower):
+            no_other_symptoms = True
+        elif re.search(r"\b(also|new|started|developed|now\s+having|now\s+i\s+have)\b", turn_lower):
+            no_other_symptoms = False
+
+        # 3. Temperature tracking (chronologically latest turn overrides earlier)
+        temp_match = re.search(r"\b(10[0-6](?:\.\d)?|9[6-9](?:\.\d)?|3[6-9](?:\.\d)?|4[0-2](?:\.\d)?)\s*(?:°\s*)?([fc]|deg|degrees|farenheit|fahrenheit|celsius)?\b", turn_clean, re.IGNORECASE)
+        if temp_match:
+            val = temp_match.group(1)
+            unit = temp_match.group(2) or ("°C" if float(val) < 45 else "°F")
+            temperature = f"{val} {unit}".strip()
+
+        # 4. Duration tracking (latest turn overrides)
+        dur_match = re.search(r"\b(\d+|one|two|three|four|five|several|a\s+few)\s*(days?|hours?|weeks?|months?)\b", turn_lower)
+        if dur_match:
+            dur_str = dur_match.group(0)
+            word_digits = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
+            for w, d in word_digits.items():
+                dur_str = re.sub(rf"\b{w}\b", d, dur_str)
+            duration = dur_str
+        elif "since yesterday" in turn_lower or "from yesterday" in turn_lower:
+            duration = "since yesterday"
+        elif "last night" in turn_lower:
+            duration = "since last night"
+
+        # 5. Severity tracking (latest turn overrides)
+        sev_match = re.search(r"\b(\d{1,2})\s*\/\s*10\b", turn_lower)
+        if sev_match:
+            severity = f"{sev_match.group(1)}/10"
+        elif re.search(r"\b(mild|moderate|severe|high|intense)\b", turn_lower):
+            sev_word = re.search(r"\b(mild|moderate|severe|high|intense)\b", turn_lower).group(0)
+            severity = sev_word.capitalize()
+
+        # 6. Medication status (latest turn overrides)
+        if re.search(r"\b(haven'?t\s+taken\s+any\s+(?:med|medication|medicine|meds?|pill|pills|tablet|tablets|anything)|no\s+medication|not\s+taken\s+any\s+(?:med|medication|medicine|meds?)|no\s+medicine|haven'?t\s+had\s+any\s+(?:med|medication|medicine))\b", turn_lower):
+            medication_status = "No medication taken yet"
+        elif re.search(r"\b(took|taken|taking|started)\s+(?:a\s+)?(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic|medication|medicine)\b", turn_lower):
+            med_m = re.search(r"\b(took|taken|taking|started)\s+(?:a\s+)?(paracetamol|crocin|dolo|ibuprofen|tylenol|aspirin|antibiotic|medication|medicine)\b", turn_lower)
+            medication_status = f"Reported taking {med_m.group(2).capitalize()}"
 
     return {
-        "complaints": complaints,
+        "complaints": sorted(list(complaints)),
+        "denied_symptoms": sorted(list(denied_symptoms)),
         "duration": duration,
         "temperature": temperature,
         "severity": severity,
@@ -310,13 +345,13 @@ async def generate_chat_response(
     emergency_eval = detect_emergency(msg_stripped)
     if emergency_eval.is_emergency:
         emergency_content = (
-            f"🚨 **IMMEDIATE EMERGENCY MEDICAL ALERT**\n\n"
+            f"🚨 **Critical Warning Signs Detected — Possible Medical Emergency**\n\n"
             f"{emergency_eval.guidance}\n\n"
             f"**Detected Red Flags:** {', '.join(emergency_eval.triggers)}\n\n"
             f"📞 **Emergency Contacts (India):**\n"
             f"- **National Emergency Helpline:** 112\n"
             f"- **Ambulance Services:** 102 / 108\n\n"
-            f"⚠️ *Please do not delay seeking professional emergency care. Sit in a comfortable resting position while help arrives.*"
+            f"⚠️ *Please seek in-person emergency hospital care immediately. Do not drive yourself. Sit in a comfortable resting position while help arrives.*"
         )
         return AIChatResponse(
             content=emergency_content,
@@ -335,6 +370,7 @@ async def generate_chat_response(
 
     # Step 3: Targeted RAG Retrieval (Avoid querying for simple greetings)
     citations = []
+    seen_citation_titles = set()
     rag_context_text = ""
     rag_passages = []
 
@@ -352,13 +388,16 @@ async def generate_chat_response(
             context_parts = []
             for i, p in enumerate(rag_passages):
                 meta = p["metadata"]
-                citations.append({
-                    "title": meta.get("title", "Medical Reference"),
-                    "source": meta.get("source", "Official Medical Guideline"),
-                    "section": meta.get("section", ""),
-                    "url": meta.get("source_url", ""),
-                    "relevance_score": p.get("score", 0.0)
-                })
+                title = meta.get("title", "Medical Reference")
+                if title not in seen_citation_titles:
+                    seen_citation_titles.add(title)
+                    citations.append({
+                        "title": title,
+                        "source": meta.get("source", "Official Medical Guideline"),
+                        "section": meta.get("section", ""),
+                        "url": meta.get("source_url", ""),
+                        "relevance_score": p.get("score", 0.0)
+                    })
                 context_parts.append(
                     f"[Source {i+1}: {meta.get('title', 'Unknown')} - {meta.get('section', '')}]\n{p['text']}"
                 )
@@ -402,7 +441,9 @@ async def generate_chat_response(
     symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
     known_facts = []
     if symptom_state["complaints"]:
-        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
+        known_facts.append(f"Confirmed active symptoms: {', '.join(symptom_state['complaints'])}")
+    if symptom_state["denied_symptoms"]:
+        known_facts.append(f"Explicitly denied symptoms: {', '.join(symptom_state['denied_symptoms'])}")
     if symptom_state["duration"]:
         known_facts.append(f"Duration: {symptom_state['duration']}")
     if symptom_state["temperature"]:
@@ -418,30 +459,10 @@ async def generate_chat_response(
         sys_instruction_parts.append(
             f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
             + "\n".join(f"- {fact}" for fact in known_facts)
-            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
-        )
-
-    # Structured symptom state tracking across entire consultation
-    symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
-    known_facts = []
-    if symptom_state["complaints"]:
-        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
-    if symptom_state["duration"]:
-        known_facts.append(f"Duration: {symptom_state['duration']}")
-    if symptom_state["temperature"]:
-        known_facts.append(f"Measured temperature: {symptom_state['temperature']}")
-    if symptom_state["severity"]:
-        known_facts.append(f"Severity: {symptom_state['severity']}")
-    if symptom_state["no_other_symptoms"]:
-        known_facts.append("Patient explicitly confirmed NO other symptoms are present")
-    if symptom_state["medication_status"]:
-        known_facts.append(f"Medication status: {symptom_state['medication_status']}")
-
-    if known_facts:
-        sys_instruction_parts.append(
-            f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
-            + "\n".join(f"- {fact}" for fact in known_facts)
-            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
+            + "\nCRITICAL RULES FOR MULTI-TURN CONTINUITY:\n"
+            + "1. Do NOT restart the conversation or repeat self-care instructions (hydration, rest, dark room) already provided earlier.\n"
+            + "2. Do NOT re-ask questions already answered above or enquire about symptoms explicitly denied.\n"
+            + "3. Acknowledge new facts directly (e.g. fever duration 2 days, 102°F) and focus on specific clinical implications and relevant unasked next steps."
         )
 
     context_summary, recent_turns = condense_conversation_context(conversation_history)
@@ -507,13 +528,13 @@ async def stream_chat_response(
     emergency_eval = detect_emergency(msg_stripped)
     if emergency_eval.is_emergency:
         emergency_content = (
-            f"🚨 **IMMEDIATE EMERGENCY MEDICAL ALERT**\n\n"
+            f"🚨 **Critical Warning Signs Detected — Possible Medical Emergency**\n\n"
             f"{emergency_eval.guidance}\n\n"
             f"**Detected Red Flags:** {', '.join(emergency_eval.triggers)}\n\n"
             f"📞 **Emergency Contacts (India):**\n"
             f"- **National Emergency Helpline:** 112\n"
             f"- **Ambulance Services:** 102 / 108\n\n"
-            f"⚠️ *Please do not delay seeking professional emergency care. Sit in a comfortable resting position while help arrives.*"
+            f"⚠️ *Please seek in-person emergency hospital care immediately. Do not drive yourself. Sit in a comfortable resting position while help arrives.*"
         )
         yield {
             "type": "emergency",
@@ -533,6 +554,7 @@ async def stream_chat_response(
 
     # Step 3: Targeted RAG Retrieval
     citations = []
+    seen_citation_titles = set()
     rag_context_text = ""
     rag_passages = []
 
@@ -548,13 +570,16 @@ async def stream_chat_response(
             context_parts = []
             for i, p in enumerate(rag_passages):
                 meta = p["metadata"]
-                citations.append({
-                    "title": meta.get("title", "Medical Reference"),
-                    "source": meta.get("source", "Official Medical Guideline"),
-                    "section": meta.get("section", ""),
-                    "url": meta.get("source_url", ""),
-                    "relevance_score": p.get("score", 0.0)
-                })
+                title = meta.get("title", "Medical Reference")
+                if title not in seen_citation_titles:
+                    seen_citation_titles.add(title)
+                    citations.append({
+                        "title": title,
+                        "source": meta.get("source", "Official Medical Guideline"),
+                        "section": meta.get("section", ""),
+                        "url": meta.get("source_url", ""),
+                        "relevance_score": p.get("score", 0.0)
+                    })
                 context_parts.append(
                     f"[Source {i+1}: {meta.get('title', 'Unknown')} - {meta.get('section', '')}]\n{p['text']}"
                 )
@@ -598,7 +623,9 @@ async def stream_chat_response(
     symptom_state = extract_conversation_symptom_state(conversation_history, msg_stripped)
     known_facts = []
     if symptom_state["complaints"]:
-        known_facts.append(f"Primary complaints: {', '.join(symptom_state['complaints'])}")
+        known_facts.append(f"Confirmed active symptoms: {', '.join(symptom_state['complaints'])}")
+    if symptom_state["denied_symptoms"]:
+        known_facts.append(f"Explicitly denied symptoms: {', '.join(symptom_state['denied_symptoms'])}")
     if symptom_state["duration"]:
         known_facts.append(f"Duration: {symptom_state['duration']}")
     if symptom_state["temperature"]:
@@ -614,7 +641,10 @@ async def stream_chat_response(
         sys_instruction_parts.append(
             f"[ESTABLISHED CONSULTATION HISTORY - DO NOT RE-ASK THESE FACTS]:\n"
             + "\n".join(f"- {fact}" for fact in known_facts)
-            + "\nCRITICAL: Do NOT restart the conversation or ask questions already answered above! Build directly upon this established context."
+            + "\nCRITICAL RULES FOR MULTI-TURN CONTINUITY:\n"
+            + "1. Do NOT restart the conversation or repeat self-care instructions (hydration, rest, dark room) already provided earlier.\n"
+            + "2. Do NOT re-ask questions already answered above or enquire about symptoms explicitly denied.\n"
+            + "3. Acknowledge new facts directly (e.g. fever duration 2 days, 102°F) and focus on specific clinical implications and relevant unasked next steps."
         )
 
     context_summary, recent_turns = condense_conversation_context(conversation_history)
@@ -822,6 +852,41 @@ def _generate_intelligent_clinical_fallback(
             content=response_text,
             citations=[],
             safety_flags={"emergency_detected": False, "anti_prescription_guardrail": True},
+            is_emergency=False,
+            tokens_used=0
+        )
+
+    # Case 0B: Consultation Summary / Recall Inquiry (e.g. "What symptoms have I told you about so far?")
+    if re.search(r"\b(what\s+(symptoms?|have\s+i|did\s+i)\b.*?(told|mentioned|said|reported|so\s+far)\b|summar(y|ize)\s+(my\s+)?(symptoms?|consultation|history)\b)", msg_lower):
+        active_list = ", ".join(symptom_state["complaints"]) if symptom_state["complaints"] else "None explicitly confirmed"
+        denied_list = ", ".join(symptom_state["denied_symptoms"]) if symptom_state["denied_symptoms"] else ("None specific" if not symptom_state["no_other_symptoms"] else "You confirmed no other symptoms are present")
+
+        details = []
+        if symptom_state["duration"]:
+            details.append(f"**Duration:** {symptom_state['duration']}")
+        if symptom_state["temperature"]:
+            details.append(f"**Measured Temperature:** {symptom_state['temperature']}")
+        if symptom_state["severity"]:
+            details.append(f"**Severity Rating:** {symptom_state['severity']}")
+        if symptom_state["medication_status"]:
+            details.append(f"**Medication Status:** {symptom_state['medication_status']}")
+
+        details_str = "\n".join(f"- {d}" for d in details) if details else "- No specific duration or measurements recorded yet."
+
+        response_text = (
+            "Here is a summary of the health details you have shared with me during this consultation so far:\n\n"
+            f"### 📋 Consultation Summary\n"
+            f"- **Active Symptom(s):** {active_list}\n"
+            f"- **Additional / Denied Symptoms:** {denied_list}\n"
+            f"{details_str}\n\n"
+            "### 💡 Next Steps\n"
+            "If your symptoms have changed, if you have taken any medication, or if you are feeling any new discomfort, please let me know. "
+            "Remember to seek prompt medical assessment if a high fever persists beyond 48–72 hours or if warning signs appear."
+        )
+        return AIChatResponse(
+            content=response_text,
+            citations=citations,
+            safety_flags={"emergency_detected": False, "consultation_summary": True},
             is_emergency=False,
             tokens_used=0
         )

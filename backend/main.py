@@ -44,19 +44,37 @@ async def lifespan(app: FastAPI):
         db.close()
 
     # 3. Verify / Ingest RAG documents
-    rag_status = rag_service.get_status()
-    if rag_status["total_chunks"] == 0:
-        print("[Startup] ChromaDB collection empty. Checking for legacy collection to migrate...")
-        from backend.services.chroma_migration import migrate_to_fastembed_collection
+    if settings.EMBEDDING_PROVIDER == "fastembed" and (
+        settings.CHROMA_COLLECTION_NAME == "medical_knowledge"
+        or settings.CHROMA_COLLECTION_NAME == getattr(settings, "CHROMA_LEGACY_COLLECTION_NAME", "medical_knowledge")
+    ):
+        settings.CHROMA_COLLECTION_NAME = "medical_knowledge_fastembed_v1"
+        rag_service.collection_name = "medical_knowledge_fastembed_v1"
+        rag_service.reload_collection()
+
+    from backend.services.chroma_migration import check_migration_status, migrate_to_fastembed_collection
+    mig_status = check_migration_status()
+    if mig_status.get("needs_migration"):
+        print(f"[Startup] Legacy migration needed ({mig_status.get('missing_count')} chunks missing). Resuming migration...")
         mig_res = migrate_to_fastembed_collection()
+        rag_service.reload_collection()
         if mig_res.get("migrated_count", 0) > 0:
             print(f"[Startup] Migrated {mig_res['migrated_count']} chunks to FastEmbed collection.")
-        elif os.path.exists(DOCS_DIR):
-            print("[Startup] Ingesting medical reference documents from disk via FastEmbed...")
-            ingest_res = rag_service.ingest_directory(DOCS_DIR)
-            print(f"[Startup] Ingested {len(ingest_res)} documents into ChromaDB.")
-    else:
-        print(f"[Startup] ChromaDB collection verified ({rag_status['total_chunks']} chunks in {rag_status['collection_name']}).")
+
+    # Reconcile any prior crashed staging operations
+    reconciled_count = rag_service.reconcile_all_manifests()
+    if reconciled_count > 0:
+        print(f"[Startup] Reconciled {reconciled_count} interrupted document staging operations.")
+
+    rag_status = rag_service.get_status()
+    if rag_status["total_chunks"] == 0 and os.path.exists(DOCS_DIR):
+        print(f"[Startup] Ingesting medical reference documents from disk ({DOCS_DIR}) via FastEmbed...")
+        ingest_res = rag_service.ingest_directory(DOCS_DIR)
+        rag_service.reload_collection()
+        rag_status = rag_service.get_status()
+        print(f"[Startup] Ingested {len(ingest_res)} documents into ChromaDB.")
+
+    print(f"[Startup] ChromaDB collection verified ({rag_status['total_chunks']} chunks in {rag_status['collection_name']}).")
 
     yield
 

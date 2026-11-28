@@ -56,7 +56,7 @@ async function loadRAGStatus() {
     const status = await API.knowledge.getStatus();
     const badge = document.getElementById("ragStatusBadge");
     if (badge && status.is_ready) {
-      badge.innerText = `● RAG Active (${status.total_chunks} Chunks Index)`;
+      badge.innerText = `â— RAG Active (${status.total_chunks} Chunks Index)`;
       badge.className = "badge badge-selfcare";
     }
   } catch (err) {
@@ -80,13 +80,13 @@ async function loadConversationList() {
     }
 
     listEl.innerHTML = convs.map(c => `
-      <li class="chat-history-item ${c.id === activeConversationId ? 'active' : ''}" 
+      <li class="chat-history-item ${c.id === activeConversationId ? 'active' : ''}"
           onclick="switchConversation('${c.id}')" id="convItem_${c.id}">
         <span class="chat-history-title" title="${escapeHtml(c.title)}">
-          💬 ${escapeHtml(c.title)}
+          ðŸ’¬ ${escapeHtml(c.title)}
         </span>
         <button class="chat-delete-btn" onclick="handleDeleteConversation(event, '${c.id}')" title="Delete conversation">
-          ✕
+          âœ•
         </button>
       </li>
     `).join("");
@@ -167,43 +167,81 @@ function handleSuggestion(buttonEl) {
 
 function renderCitationsHtml(citations) {
   if (!citations || citations.length === 0) return "";
+  // Deduplicate citations by title
+  const uniqueCitations = [];
+  const seen = new Set();
+  for (const c of citations) {
+    const key = (c.title || "").trim().toLowerCase();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      uniqueCitations.push(c);
+    }
+  }
+  if (uniqueCitations.length === 0) return "";
+
   return `
     <div class="citation-container">
       <div class="citation-header">
-        <span>📚 Verified Clinical Guidelines Referenced:</span>
+        <span>ðŸ“š Verified Clinical Guidelines Referenced:</span>
       </div>
-      ${citations.map((c, i) => `
+      ${uniqueCitations.map((c, i) => `
         <div class="citation-item">
-          [${i+1}] <strong>${escapeHtml(c.title)}</strong> 
-          ${c.source ? `(${escapeHtml(c.source)})` : ''}
-          ${c.section ? `• <em>${escapeHtml(c.section)}</em>` : ''} 
-          ${c.url ? `• <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Guideline Link</a>` : ''}
+          [${i+1}] <strong>${escapeHtml(c.title)}</strong>
+          ${c.source && c.source !== 'Official Medical Reference' ? `(${escapeHtml(c.source)})` : ''}
+          ${c.section && c.section !== 'General Overview' ? `â€¢ <em>${escapeHtml(c.section)}</em>` : ''}
+          ${c.url ? `â€¢ <a href="${escapeHtml(c.url)}" target="_blank" rel="noopener">Official Guideline Link</a>` : ''}
         </div>
       `).join("")}
     </div>
   `;
 }
 
-function renderEmergencyCardHtml(safetyFlags) {
+function renderEmergencyCardHtml(safetyFlags, rawContent = "") {
   if (!safetyFlags || !safetyFlags.emergency_detected) return "";
   const triggersList = Array.isArray(safetyFlags.triggers) && safetyFlags.triggers.length > 0
-    ? `<div style="margin-top: 0.35rem; font-size: 0.85rem; color: #7f1d1d;">
-         <strong>Detected Red Flags:</strong> ${safetyFlags.triggers.map(t => `<span class="badge badge-emergency" style="display:inline-block; margin: 0.15rem 0.25rem 0.15rem 0; font-size: 0.78rem;">⚠️ ${escapeHtml(t)}</span>`).join(" ")}
+    ? `<div style="margin: 0.5rem 0; font-size: 0.88rem; color: #7f1d1d;">
+         <strong>Detected Warning Symptoms:</strong><br/>
+         ${safetyFlags.triggers.map(t => `<span class="badge badge-emergency" style="display:inline-block; margin: 0.2rem 0.3rem 0.2rem 0; font-size: 0.82rem; padding: 0.25rem 0.5rem;">âš ï¸ ${escapeHtml(t)}</span>`).join(" ")}
        </div>`
     : "";
 
+  // Extract clean clinical guidance text if present in raw content
+  let guidanceText = "";
+  if (rawContent) {
+    const paragraphs = rawContent.split("\n\n");
+    for (const p of paragraphs) {
+      const cleanP = p.trim();
+      if (cleanP && !cleanP.startsWith("ðŸš¨") && !cleanP.startsWith("**Detected") && !cleanP.startsWith("ðŸ“ž") && !cleanP.startsWith("âš ï¸")) {
+        guidanceText = cleanP;
+        break;
+      }
+    }
+  }
+  if (!guidanceText) {
+    guidanceText = "These symptoms indicate a critical medical situation requiring immediate professional assessment.";
+  }
+
   return `
-    <div class="chat-emergency-card">
-      <div class="chat-emergency-header">
-        <span>🚨 Critical Warning Sign Detected:</span>
-        <span>${escapeHtml(safetyFlags.category || "Emergency Escalation")}</span>
+    <div class="chat-emergency-card" style="border: 2px solid #dc2626; background: #fef2f2; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
+      <div class="chat-emergency-header" style="font-weight: 700; color: #991b1b; font-size: 1.05rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>ðŸš¨ Critical Warning Signs Detected â€” Possible Medical Emergency</span>
       </div>
-      <div>Please seek in-person emergency care without delay. Do not drive yourself.</div>
+      <div style="color: #1f2937; line-height: 1.5; margin-bottom: 0.5rem;">
+        ${escapeHtml(guidanceText)}
+      </div>
       ${triggersList}
-      <div class="emergency-btn-group">
-        <a href="tel:112" class="btn btn-danger btn-sm">📞 Call National Emergency 112</a>
-        <a href="tel:102" class="btn btn-outline btn-sm" style="color: #991b1b; border-color: #991b1b;">
-          🚑 Call Ambulance 102/108
+      <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 0.6rem 0.75rem; margin: 0.75rem 0; font-size: 0.88rem; color: #7f1d1d; border-radius: 4px;">
+        <strong>âš ï¸ Immediate Safety Actions:</strong>
+        <ul style="margin: 0.25rem 0 0 1.2rem; padding: 0;">
+          <li>Seek emergency hospital care immediately. <strong>DO NOT drive yourself.</strong></li>
+          <li>Cease physical exertion and sit or lie in a comfortable resting position.</li>
+          <li>If someone is nearby, have them stay with you while awaiting responders.</li>
+        </ul>
+      </div>
+      <div class="emergency-btn-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem;">
+        <a href="tel:112" class="btn btn-danger btn-sm" style="font-weight: 600; padding: 0.45rem 0.85rem;">ðŸ“ž Call National Emergency 112</a>
+        <a href="tel:102" class="btn btn-outline btn-sm" style="color: #991b1b; border: 1px solid #991b1b; font-weight: 600; padding: 0.45rem 0.85rem;">
+          ðŸš‘ Call Ambulance 102 / 108
         </a>
       </div>
     </div>
@@ -324,7 +362,7 @@ async function handleSendMessage(customText = null) {
       } catch (err) {
         appendMessageToUI(
           "assistant",
-          `⚠️ **Connection Notice:** ${err.message || "Could not reach the healthcare service. Please check your network and retry."}`,
+          `âš ï¸ **Connection Notice:** ${err.message || "Could not reach the healthcare service. Please check your network and retry."}`,
           null,
           { is_error: true, can_retry: true },
           new Date().toISOString()
@@ -375,29 +413,32 @@ function appendMessageToUI(role, content, citations, safetyFlags, timestamp) {
   row.className = `message-row ${role}`;
 
   const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-  const formattedHtml = formatMarkdown(content);
-  const citationsHtml = renderCitationsHtml(citations);
-  const emergencyCardHtml = renderEmergencyCardHtml(safetyFlags);
 
-  let retryButtonHtml = "";
-  if (safetyFlags && safetyFlags.can_retry) {
-    retryButtonHtml = `
-      <div>
-        <button class="chat-retry-btn" onclick="retryLastMessage()">
-          🔄 Retry Sending Message
-        </button>
-      </div>
-    `;
+  let bubbleInnerHtml = "";
+  if (safetyFlags && safetyFlags.emergency_detected) {
+    // Single consolidated emergency alert: no duplicate markdown text or duplicated contact blocks
+    bubbleInnerHtml = renderEmergencyCardHtml(safetyFlags, content);
+  } else {
+    const formattedHtml = formatMarkdown(content);
+    const citationsHtml = renderCitationsHtml(citations);
+    let retryButtonHtml = "";
+    if (safetyFlags && safetyFlags.can_retry) {
+      retryButtonHtml = `
+        <div>
+          <button class="chat-retry-btn" onclick="retryLastMessage()">
+            ðŸ”„ Retry Sending Message
+          </button>
+        </div>
+      `;
+    }
+    bubbleInnerHtml = formattedHtml + citationsHtml + retryButtonHtml;
   }
 
   row.innerHTML = `
-    <div class="message-avatar">${role === 'user' ? '👤' : 'AI'}</div>
+    <div class="message-avatar">${role === 'user' ? 'ðŸ‘¤' : 'AI'}</div>
     <div class="message-content">
       <div class="message-bubble">
-        ${formattedHtml}
-        ${emergencyCardHtml}
-        ${citationsHtml}
-        ${retryButtonHtml}
+        ${bubbleInnerHtml}
       </div>
       <span class="message-time">${timeStr}</span>
     </div>
@@ -420,13 +461,13 @@ function formatMarkdown(text) {
 
   // Headers: ### Header 3
   formatted = formatted.replace(/^###\s+(.*)$/gm, '<h4 class="chat-heading">$1</h4>');
-  
+
   // Headers: ## Header 2
   formatted = formatted.replace(/^##\s+(.*)$/gm, '<h3 class="chat-heading">$1</h3>');
 
   // Bold **text**
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
+
   // Italic *text*
   formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
@@ -440,8 +481,8 @@ function formatMarkdown(text) {
   formatted = formatted.replace(/^\s*(\d+)\.\s+(.*)$/gm, '<div class="chat-list-item"><strong>$1.</strong> $2</div>');
 
   // Bullet list items: - item or * item
-  formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, '<div class="chat-list-item">• $1</div>');
-  
+  formatted = formatted.replace(/^\s*[-*]\s+(.*)$/gm, '<div class="chat-list-item">â€¢ $1</div>');
+
   // Linebreaks (convert \n to <br> if not already preceded by a block element)
   formatted = formatted.replace(/([^>])\n/g, '$1<br>');
 

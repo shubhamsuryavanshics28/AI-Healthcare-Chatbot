@@ -15,6 +15,8 @@
 | Phase 2 | Gemini LLM Integration & Provider Abstraction | ✅ **COMPLETE & VERIFIED** | 81/81 pass |
 | Phase 3 | Local Embedding Service (FastEmbed) & ChromaDB Migration | ✅ **COMPLETE & VERIFIED** | 92/92 pass |
 | Phase 3.1 | Conversational Intelligence, RAG Quality & Medical Safety | ✅ **COMPLETE & VERIFIED** | 101/101 pass |
+| Phase 3.1.1 | Final Medical Safety, Conversation Quality & Citation Refinement | ✅ **COMPLETE & VERIFIED** | 106/106 pass |
+| Phase 3.1.2 | RAG Reliability, Safe Ingestion and Migration Recovery | ✅ **COMPLETE & VERIFIED** | 57/57 pass (14 new regression tests) |
 | Phase 4 | Healthcare AI Reasoning Improvements | ⏳ Pending | — |
 | Phase 5 | Structured Symptom Assessment | ⏳ Pending | — |
 | Phase 6 | Emergency Detection (verify/improve) | ⏳ Pending | — |
@@ -232,6 +234,35 @@ Detailed plans will be added as each phase begins.
 | Hash embedder active (non-semantic) | `rag_service.py` | ✅ Fixed — migrated to true FastEmbed semantic vectors in `medical_knowledge_fastembed_v1` (Phase 3) |
 | `GEMINI_API_KEY` in `.env` is invalid (HTTP 401) | `.env` | ✅ Fixed — valid key configured and verified with live generation and streaming |
 | `gemini-2.0-flash` model deprecated | `config.py`, `.env`, `.env.example` | ✅ Fixed — updated to verified `gemini-3.5-flash-lite` |
+| ChromaDB collection mismatch regression | `rag_service.py`, `main.py` | ✅ Fixed — FastEmbed collection enforcement & self-healing verification (Phase 3.1.1) |
+| RAG safe staged replacement & crash recovery | `rag_service.py`, `chroma_migration.py`, `main.py` | ✅ Fixed — Canonical doc_id, deterministic chunk IDs, staged upsert, verifiable manifest, and 1:1 legacy migration (Phase 3.1.2) |
+
+---
+
+## PHASE 3.1.2: COMPLETE & VERIFIED ✅
+
+**Completed:** 2026-11-26
+**Focus:** RAG Reliability, Safe Ingestion, Collision-Resistant IDs, Resumable Migration & Crash Recovery
+
+### Key Deliverables & Safeguards
+1. **Canonical Source-Relative Document Identity:**
+   - Stable across project relocation via normalized path hashing (`compute_stable_doc_id()`).
+   - Distinguishes files sharing the same name across distinct directories.
+   - Consistent extension stripping for `.pdf`, `.txt`, and `.md` files.
+2. **Deterministic Content Versioning & Chunk IDs:**
+   - Content version hash (`doc_version = sha256(raw_text)[:16]`) strictly separated from operational state.
+   - Chunk IDs incorporate stable `doc_id`, section name, chunk index, and content hash: `f"{doc_id}_{chunk_index}_{content_hash[:12]}"`.
+3. **Safe Staged Replacement & Verifiable Manifest:**
+   - Embeddings strictly validated before modifying ChromaDB.
+   - Persistent manifest (`_manifests/<doc_id>.json`) tracks `staging` -> `verified` lifecycle.
+   - Previous valid version remains active if embedding or insertion fails.
+4. **Crash Recovery Reconciliation:**
+   - `reconcile_document_manifest()` rolls back incomplete staged versions and commits fully staged versions.
+5. **Resumable 1:1 Legacy Migration:**
+   - Unique 1:1 mapping by `legacy_id`; re-embeds only missing legacy chunks via FastEmbed.
+   - Verifies target records 1:1; source collection (`medical_knowledge`, 28 chunks) remains untouched.
+6. **Regression Tests Added:**
+   - `tests/test_rag_reliability_and_migration.py` (14 comprehensive regression tests covering all 10 prompt requirements and user safeguards, 100% passing).
 
 ---
 

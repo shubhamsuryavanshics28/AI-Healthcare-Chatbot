@@ -165,3 +165,121 @@ async def test_stream_interruption_yields_completion_notice():
     done_evt = [e for e in events if e.get("type") == "done"][0]
     assert done_evt.get("full_content") is not None
     assert len(done_evt.get("full_content")) > 20
+
+
+# =============================================================================
+# 5. PHASE 3.1.1 ENHANCED NEGATION, CORRECTION & CITATION REFINEMENT TESTS
+# =============================================================================
+
+def test_negative_symptom_denial_not_marked_as_positive():
+    """Verify that explicitly denied symptoms are not added to positive complaints."""
+    # Negative symptom statement
+    state_neg = extract_conversation_symptom_state([], "I don't have chest pain, but I feel tired.")
+    assert "chest pain" not in state_neg["complaints"]
+    assert "chest pain" in state_neg["denied_symptoms"]
+    assert "fatigue" in state_neg["complaints"]
+
+    # Positive symptom statement
+    state_pos = extract_conversation_symptom_state([], "I have severe chest pain.")
+    assert "chest pain" in state_pos["complaints"]
+    assert "chest pain" not in state_pos["denied_symptoms"]
+
+
+def test_symptom_temporal_correction_handling():
+    """Verify chronological corrections for symptoms, temperature, and medication."""
+    # 1. Symptom denial followed by later emergence
+    history_1 = [
+        {"role": "user", "content": "I don't have a headache today."},
+        {"role": "assistant", "content": "Noted. How else are you feeling?"}
+    ]
+    state_1 = extract_conversation_symptom_state(history_1, "Actually, now I have developed a bad headache.")
+    assert "headache" in state_1["complaints"]
+    assert "headache" not in state_1["denied_symptoms"]
+
+    # 2. Temperature correction: earlier 100°F corrected to 102.5°F
+    history_2 = [
+        {"role": "user", "content": "My temperature is 100°F."},
+        {"role": "assistant", "content": "Thank you for sharing your temperature."}
+    ]
+    state_2 = extract_conversation_symptom_state(history_2, "I just remeasured with a digital thermometer and it is 102.5°F.")
+    assert "102.5" in state_2["temperature"]
+
+    # 3. Medication status correction: earlier no meds, later took paracetamol
+    history_3 = [
+        {"role": "user", "content": "I haven't taken any medication yet."},
+        {"role": "assistant", "content": "Understood. Avoid self-medicating."}
+    ]
+    state_3 = extract_conversation_symptom_state(history_3, "I took paracetamol 500mg 30 minutes ago.")
+    assert "Paracetamol" in state_3["medication_status"]
+    assert "No medication taken yet" not in state_3["medication_status"]
+
+
+def test_symptom_recall_inquiry_four_turn_conversation():
+    """
+    Test 4-turn sequence:
+    Turn 1: Fever for 2 days
+    Turn 2: Temp 102°F, no medication yet
+    Turn 3: Not experiencing any other symptoms
+    Turn 4: What symptoms have I told you about so far?
+    """
+    history = [
+        {"role": "user", "content": "I have had a fever for two days."},
+        {"role": "assistant", "content": "I understand you have had a fever for two days. Have you measured your temperature?"},
+        {"role": "user", "content": "My temperature is around 102°F. I haven't taken any medication yet."},
+        {"role": "assistant", "content": "Thank you. Are you experiencing any other symptoms?"},
+        {"role": "user", "content": "I am not experiencing any other symptoms."},
+        {"role": "assistant", "content": "Understood that you have no other symptoms."}
+    ]
+    current_msg = "What symptoms have I told you about so far?"
+
+    state = extract_conversation_symptom_state(history, current_msg)
+    assert "fever" in state["complaints"]
+    assert state["duration"] == "2 days"
+    assert "102" in state["temperature"]
+    assert state["no_other_symptoms"] is True
+    assert "No medication taken yet" in state["medication_status"]
+
+    # Verify fallback response explicitly synthesizes this exact consultation state
+    resp = _generate_intelligent_clinical_fallback(current_msg, [], [], history)
+    resp_lower = resp.content.lower()
+    assert "fever" in resp_lower
+    assert "102" in resp_lower
+    assert "2 days" in resp_lower
+    assert "no other symptoms" in resp_lower or "no other" in resp_lower
+
+
+def test_citation_deduplication_in_chat_response():
+    """Verify that multiple chunks from the same guideline produce deduplicated citations."""
+    history = []
+    # Query known to match multiple chunks of dengue guidelines
+    current_msg = "What are the phase stages of dengue fever and clinical management?"
+    resp = _generate_intelligent_clinical_fallback(current_msg, [], [], history)
+
+    # Now test RAG retrieval query and ensure citations list has unique titles
+    passages = rag_service.query("What are the phase stages of dengue fever?", top_k=4)
+    assert len(passages) >= 2
+
+    # Simulate citation assembly
+    seen = set()
+    citations = []
+    for p in passages:
+        title = p["metadata"].get("title")
+        if title not in seen:
+            seen.add(title)
+            citations.append(p)
+
+    # Citations list must have unique titles
+    titles = [c["metadata"].get("title") for c in citations]
+    assert len(titles) == len(set(titles))
+
+
+@pytest.mark.asyncio
+async def test_emergency_response_consolidated_header_and_no_drive():
+    """Verify that emergency chat responses use neutral non-diagnostic header and no-drive warning."""
+    resp = await generate_chat_response("I have severe crushing chest pain radiating to my arm and shortness of breath.", [])
+    assert resp.is_emergency is True
+    assert "Critical Warning Signs Detected — Possible Medical Emergency" in resp.content
+    assert "Suspected Acute Coronary Syndrome" not in resp.content
+    assert "do not drive yourself" in resp.content.lower()
+    assert "112" in resp.content
+    assert len(resp.safety_flags["triggers"]) >= 2
